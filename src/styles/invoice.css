@@ -1,0 +1,106 @@
+/* ---------- Invoice document (screen + print) ---------- */
+.invoice-doc {
+  background: #fff;
+  color: #020921;
+  padding: 40px 44px;
+  max-width: 720px;
+  margin: 0 auto;
+  font-size: 13.5px;
+}
+.inv-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid #0e51e4;
+  padding-bottom: 20px;
+  margin-bottom: 24px;
+}
+.inv-brand { display: flex; gap: 12px; align-items: center; }
+.inv-logo {
+  width: 44px; height: 44px; display: grid; place-items: center;
+}
+.inv-logo img { display: block; width: 38px; height: auto; }
+.inv-co { font-weight: 800; font-size: 16px; }
+.inv-co-sub { color: rgba(2, 9, 33, 0.65); font-size: 12px; }
+.inv-title { text-align: right; }
+.inv-title h1 { font-size: 22px; letter-spacing: 0.04em; color: #0e51e4; }
+.inv-num { font-weight: 600; margin: 2px 0 6px; }
+
+.inv-parties {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 24px;
+}
+.inv-label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: rgba(2, 9, 33, 0.48); margin-bottom: 4px; font-weight: 600;
+}
+.inv-strong { font-weight: 600; font-size: 15px; }
+.inv-muted { color: rgba(2, 9, 33, 0.65); font-size: 12.5px; }
+.inv-dates { text-align: right; min-width: 180px; }
+.inv-date-row { display: flex; justify-content: space-between; gap: 24px; padding: 2px 0; }
+
+.inv-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
+.inv-table th {
+  text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+  color: rgba(2, 9, 33, 0.65); border-bottom: 1.5px solid #e9e9e9; padding: 8px 10px;
+}
+.inv-table td { padding: 10px; border-bottom: 1px solid #e9e9e9; }
+.inv-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.inv-totals { margin-left: auto; width: 280px; }
+.inv-total-row { display: flex; justify-content: space-between; padding: 6px 10px; }
+.inv-total-row.grand {
+  border-top: 2px solid #020921; margin-top: 4px; padding-top: 10px;
+  font-weight: 800; font-size: 16px;
+}
+.inv-notes { margin-top: 28px; border-top: 1px solid #e9e9e9; padding-top: 14px; }
+.inv-notes p { margin: 4px 0 0; color: rgba(2, 9, 33, 0.65); }
+.inv-foot {
+  margin-top: 32px; text-align: center; color: rgba(2, 9, 33, 0.48); font-size: 12px;
+  border-top: 1px solid #e9e9e9; padding-top: 16px;
+}
+
+/* ---------- Drawer ---------- */
+.drawer-overlay {
+  position: fixed; inset: 0; background: rgba(31, 35, 40, 0.4);
+  z-index: 40; display: flex; justify-content: flex-end;
+}
+.drawer {
+  width: min(820px, 92vw); background: var(--surface); height: 100%;
+  overflow-y: auto; box-shadow: var(--shadow-lg);
+  animation: slidein 0.18s ease;
+}
+@keyframes slidein { from { transform: translateX(24px); opacity: 0.6; } to { transform: translateX(0); opacity: 1; } }
+.drawer-bar {
+  position: sticky; top: 0; background: var(--surface); z-index: 2;
+  display: flex; align-items: center; gap: 12px; padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ---------- Print ---------- */
+@media (max-width: 720px) {
+  .inv-head,
+  .inv-parties {
+    flex-direction: column;
+  }
+  .inv-title,
+  .inv-dates {
+    text-align: left;
+  }
+  .inv-totals {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
+@media print {
+  body * { visibility: hidden; }
+  #invoice-print, #invoice-print * { visibility: visible; }
+  #invoice-print {
+    position: absolute; left: 0; top: 0; width: 100%;
+    padding: 0; margin: 0;
+  }
+  @page { size: A4; margin: 18mm; }
+}
