@@ -61,6 +61,7 @@ export type ManagementPipelineCase = {
     lastName: string;
   };
   contactName: string | null;
+  title: string | null;
   currentStage: string;
   status: string;
   createdAt: string;
@@ -88,6 +89,8 @@ export type ManagementPipelineCase = {
 export type ManagementPipelineResponse = {
   advisorCount: number;
   caseCount: number;
+  overviewCaseCount: number;
+  overviewActiveCaseCount: number;
   stageCounts: Record<string, number>;
   totalEstimatedCommission: number;
   estimatedCommissionCaseCount: number;
@@ -157,5 +160,44 @@ export async function getManagementPerformance(
 ): Promise<ManagementPerformanceResponse> {
   return apiRequest<ManagementPerformanceResponse>(
     `/management/performance?period=${encodeURIComponent(period)}`,
+  );
+}
+
+export type AdvisorAttentionReason = {
+  code: 'mobile_inactive' | 'stalled' | 'missing_documents' | 'no_next_action';
+  label: string;
+};
+
+export type AdvisorStageDistribution = {
+  stage: string;
+  caseCount: number;
+  estimatedCommission: number;
+  estimatedCommissionCaseCount: number;
+};
+
+export type AdvisorSummaryResponse = {
+  advisorId: string;
+  lastMobileActivityAt: string | null;
+  activeCases: number;
+  pipelineValue: number;
+  estimatedCommissionCaseCount: number;
+  issuedThisMonth: {
+    month: string;
+    amount: number;
+    count: number;
+  };
+  stalledOpenCases: number;
+  missingDocumentsCases: number;
+  noNextActionCases: number;
+  attentionReasons: AdvisorAttentionReason[];
+  health: 'healthy' | 'needs_attention';
+  stageDistribution: AdvisorStageDistribution[];
+  cases: ManagementPipelineCase[];
+};
+
+/** Management-scoped advisor drilldown metrics and current open cases. */
+export async function getAdvisorSummary(advisorId: string): Promise<AdvisorSummaryResponse> {
+  return apiRequest<AdvisorSummaryResponse>(
+    `/management/advisors/${encodeURIComponent(advisorId)}/summary`,
   );
 }

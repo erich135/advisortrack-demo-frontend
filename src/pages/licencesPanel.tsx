@@ -1,10 +1,12 @@
 import { KeyRound, UserMinus, UserPlus } from 'lucide-react';
 import type { CompanyMember, LicencePool } from '../api/companyApi';
-import { Button, Pill, SearchFilterBar, StatCard } from '../components/ui';
+import { memberDisplayEmail } from '../lib/displayEmail';
+import { isPublicDemo } from '../lib/publicDemo';
+import { Button, Pill, SearchFilterBar, StatCard, useToast } from '../components/ui';
 import { useMemo, useState } from 'react';
 
-function memberName(member: CompanyMember): string {
-  return `${member.firstName ?? ''} ${member.lastName ?? ''}`.trim() || member.email;
+function memberName(member: CompanyMember, peers: CompanyMember[] = []): string {
+  return `${member.firstName ?? ''} ${member.lastName ?? ''}`.trim() || memberDisplayEmail(member, peers);
 }
 
 function poolLabel(value: number | null): string {
@@ -24,6 +26,7 @@ export function LicencesPanel({
   onRemove: (member: CompanyMember) => void;
   busyId: string | null;
 }) {
+  const toast = useToast();
   const [query, setQuery] = useState('');
   const purchased = pool?.purchased ?? null;
   const assigned = pool?.assigned ?? 0;
@@ -34,7 +37,7 @@ export function LicencesPanel({
     const needle = query.trim().toLowerCase();
     if (!needle) return members;
     return members.filter((member) =>
-      [memberName(member), member.email, member.rankLabel ?? '', member.licenceStatus]
+      [memberName(member, members), memberDisplayEmail(member, members), member.email, member.rankLabel ?? '', member.licenceStatus]
         .join(' ')
         .toLowerCase()
         .includes(needle)
@@ -76,6 +79,14 @@ export function LicencesPanel({
 
       <div className="row between" style={{ margin: '20px 0 14px', gap: 12, flexWrap: 'wrap' }}>
         <SearchFilterBar value={query} onChange={setQuery} placeholder="Search licensed users…" />
+        {isPublicDemo ? (
+          <Button
+            type="button"
+            onClick={() => toast.push('Payment actions are disabled in the public demo.', 'info')}
+          >
+            Purchase additional licences
+          </Button>
+        ) : null}
       </div>
 
       <div className="card">
@@ -93,8 +104,8 @@ export function LicencesPanel({
               {filtered.map((member) => (
                 <tr key={member.id}>
                   <td>
-                    <div className="nm">{memberName(member)}</div>
-                    <div className="sm muted">{member.email}</div>
+                    <div className="nm">{memberName(member, members)}</div>
+                    <div className="sm muted">{memberDisplayEmail(member, members)}</div>
                   </td>
                   <td>{member.rankLabel || member.role?.name || <span className="subtle">—</span>}</td>
                   <td>

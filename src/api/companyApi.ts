@@ -1,5 +1,6 @@
-import { apiRequest } from './apiClient';
+import { apiDownload, apiRequest } from './apiClient';
 import type { Organisation } from './authApi';
+import type { AdminAuditEvent, CompanySubscription, InvoiceDetail, InvoiceSummary } from './platformApi';
 
 export type CompanyRole = {
   id: string;
@@ -70,6 +71,7 @@ export type CompanyMember = {
   isPlatformAdmin: boolean;
   isActive: boolean;
   lastLoginAt?: string | null;
+  lastMobileActivityAt?: string | null;
   subscription: CompanyMemberSubscription | null;
   licenceStatus: 'Licensed' | 'Unlicensed';
   accountStatus: 'Active' | 'Inactive';
@@ -286,6 +288,37 @@ export async function getCompanyPermissions(): Promise<CompanyPermission[]> {
 /** Customer licence pool for the signed-in user's company. */
 export async function getCompanyLicencePool(): Promise<LicencePool> {
   return apiRequest<LicencePool>('/company/licence-pool');
+}
+
+/** Own-company commercial subscription. Session-scoped; never a client companyId. */
+export async function getCompanySubscription(): Promise<CompanySubscription> {
+  return apiRequest<CompanySubscription>('/company/subscription');
+}
+
+/** Own-company administrative history. */
+export async function listCompanyAudit(): Promise<{ events: AdminAuditEvent[] }> {
+  return apiRequest<{ events: AdminAuditEvent[] }>('/company/audit');
+}
+
+export async function listCompanyInvoices(): Promise<{ invoices: InvoiceSummary[] }> {
+  return apiRequest<{ invoices: InvoiceSummary[] }>('/company/invoices');
+}
+
+export async function getCompanyInvoice(invoiceId: string): Promise<InvoiceDetail> {
+  return apiRequest<InvoiceDetail>(`/company/invoices/${encodeURIComponent(invoiceId)}`);
+}
+
+export async function sendCompanyInvoice(
+  invoiceId: string,
+): Promise<InvoiceDetail & { demoSimulated?: boolean; message?: string }> {
+  return apiRequest<InvoiceDetail & { demoSimulated?: boolean; message?: string }>(
+    `/company/invoices/${encodeURIComponent(invoiceId)}/send`,
+    { method: 'POST' },
+  );
+}
+
+export async function downloadCompanyInvoicePdf(invoiceId: string): Promise<{ blob: Blob; filename: string }> {
+  return apiDownload(`/company/invoices/${encodeURIComponent(invoiceId)}/pdf`);
 }
 
 export async function getCompanyRegions(companyId?: string): Promise<OrganisationRegion[]> {

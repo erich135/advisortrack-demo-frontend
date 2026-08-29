@@ -34,6 +34,8 @@ import {
   useToast,
 } from '../components/ui';
 import { formatDate, relativeDays } from '../lib/format';
+import { memberDisplayEmail, emailForMemberUpdate } from '../lib/displayEmail';
+import { isPublicDemo } from '../lib/publicDemo';
 import { useAsync } from '../lib/useAsync';
 import { useAuth } from '../lib/useAuth';
 import {
@@ -47,8 +49,8 @@ import { LicencesPanel } from './licencesPanel';
 const AVATAR_COLORS = ['#0E51E4', '#8957e5', '#2da44e', '#bf8700', '#cf222e', '#020921', '#1a7f37'];
 const PAGE_SIZE = 20;
 
-function memberName(member: CompanyMember): string {
-  return `${member.firstName ?? ''} ${member.lastName ?? ''}`.trim() || member.email;
+function memberName(member: CompanyMember, peers: CompanyMember[] = []): string {
+  return `${member.firstName ?? ''} ${member.lastName ?? ''}`.trim() || memberDisplayEmail(member, peers);
 }
 
 function avatarColorFor(id: string): string {
@@ -194,7 +196,8 @@ export default function UsersPage({
     if (!needle) return members;
     return members.filter((member) => {
       const haystack = [
-        memberName(member),
+        memberName(member, members),
+        memberDisplayEmail(member, members),
         member.email,
         member.phone ?? '',
         member.role?.name ?? '',
@@ -267,7 +270,7 @@ export default function UsersPage({
     setForm({
       firstName: member.firstName ?? '',
       lastName: member.lastName ?? '',
-      email: member.email,
+      email: memberDisplayEmail(member, members),
       mobile: member.phone ?? '',
       roleId: member.role?.id ?? '',
       teamId: member.team?.id ?? (actorRank === 'team_leader' ? actorTeamId : ''),
@@ -323,7 +326,7 @@ export default function UsersPage({
             });
         toast.push(
           'demoSimulated' in created && created.demoSimulated
-            ? 'Demo action completed — no real message was sent.'
+            ? 'Demo user created. No real invitation was sent.'
             : 'invitationSent' in created && created.invitationSent === false
               ? 'User created. Invitation email is not configured in this environment.'
               : 'User invited.',
@@ -332,11 +335,12 @@ export default function UsersPage({
             : 'success',
         );
       } else if (editor.member) {
+        const emailUpdate = emailForMemberUpdate(editor.member, form.email, members);
         await (scopedCompanyId
           ? updatePlatformCustomerMember(scopedCompanyId, editor.member.id, {
               firstName: form.firstName.trim(),
               lastName: form.lastName.trim(),
-              email: form.email.trim(),
+              ...(emailUpdate ? { email: emailUpdate } : {}),
               phone: form.mobile.trim() || null,
               roleId: role.id,
               regionId,
@@ -345,13 +349,13 @@ export default function UsersPage({
           : updateCompanyMember(editor.member.id, {
               firstName: form.firstName.trim(),
               lastName: form.lastName.trim(),
-              email: form.email.trim(),
+              ...(emailUpdate ? { email: emailUpdate } : {}),
               phone: form.mobile.trim() || null,
               roleId: role.id,
               regionId,
               teamId,
             }));
-        toast.push('User updated.', 'success');
+        toast.push(isPublicDemo ? 'Demo user updated successfully.' : 'User updated.', 'success');
       }
       setEditor(null);
       refresh();
@@ -370,7 +374,7 @@ export default function UsersPage({
       if (type === 'deactivate') {
         if (scopedCompanyId) await updatePlatformCustomerMember(scopedCompanyId, member.id, { isActive: false });
         else await updateCompanyMember(member.id, { isActive: false });
-        toast.push('Account deactivated.', 'success');
+        toast.push(isPublicDemo ? 'Demo account deactivated.' : 'Account deactivated.', 'success');
       } else if (type === 'activate') {
         if (scopedCompanyId) await updatePlatformCustomerMember(scopedCompanyId, member.id, { isActive: true });
         else await updateCompanyMember(member.id, { isActive: true });
@@ -378,11 +382,11 @@ export default function UsersPage({
       } else if (type === 'assignLicence') {
         if (scopedCompanyId) await assignPlatformCustomerLicence(scopedCompanyId, member.id);
         else await assignCompanyMemberLicence(member.id);
-        toast.push('Licence assigned.', 'success');
+        toast.push(isPublicDemo ? 'Demo licence assigned.' : 'Licence assigned.', 'success');
       } else if (type === 'removeLicence') {
         if (scopedCompanyId) await removePlatformCustomerLicence(scopedCompanyId, member.id);
         else await removeCompanyMemberLicence(member.id);
-        toast.push('Licence removed.', 'success');
+        toast.push(isPublicDemo ? 'Demo licence removed.' : 'Licence removed.', 'success');
       } else {
         const result = scopedCompanyId
           ? await resendPlatformCustomerInvitation(scopedCompanyId, member.id)
@@ -448,7 +452,7 @@ export default function UsersPage({
         },
         resend: {
           title: 'Resend invitation',
-          message: `Send a new invitation to ${confirm.member.email}?`,
+          message: `Send a new invitation to ${memberDisplayEmail(confirm.member, members)}?`,
           confirmLabel: 'Resend',
         },
       }[confirm.type]
@@ -615,7 +619,7 @@ export default function UsersPage({
                         </div>
                       </span>
                     </td>
-                    <td>{member.email}</td>
+                    <td>{memberDisplayEmail(member, members)}</td>
                     <td>{member.phone?.trim() || <span className="subtle">—</span>}</td>
                     <td>
                       {member.rankLabel || member.role?.name ? (
@@ -748,7 +752,7 @@ export default function UsersPage({
         {editor?.mode === 'view' && editor.member ? (
           <div className="form-grid cols-2">
             <div><div className="field-label">Name</div><div>{memberName(editor.member)}</div></div>
-            <div><div className="field-label">Email</div><div>{editor.member.email}</div></div>
+            <div><div className="field-label">Email</div><div>{memberDisplayEmail(editor.member, members)}</div></div>
             <div><div className="field-label">Mobile</div><div>{editor.member.phone?.trim() || '—'}</div></div>
             <div><div className="field-label">Role</div><div>{editor.member.rankLabel || editor.member.role?.name || '—'}</div></div>
             <div><div className="field-label">Team</div><div>{editor.member.team?.name || '—'}</div></div>

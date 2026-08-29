@@ -16,11 +16,13 @@ import {
 } from '../api/companyApi';
 import { useAsync } from '../lib/useAsync';
 import { Avatar, Pill, SkeletonRows, PageIntro } from '../components/ui';
+import { memberDisplayEmail } from '../lib/displayEmail';
+import { isPublicDemo } from '../lib/publicDemo';
 
 const AVATAR_COLORS = ['#0E51E4', '#8957e5', '#2da44e', '#bf8700', '#cf222e', '#020921', '#1a7f37'];
 
-function memberName(m: CompanyMember): string {
-  return `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim() || m.email;
+function memberName(m: CompanyMember, peers: CompanyMember[] = []): string {
+  return `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim() || memberDisplayEmail(m, peers);
 }
 
 function avatarColorFor(id: string): string {
@@ -181,6 +183,14 @@ export default function SettingsPage() {
 
   const deleteRole = async () => {
     if (!deleteCandidate || deleteCandidate.isSystem) return;
+    if (isPublicDemo) {
+      setDeleteCandidate(undefined);
+      setFeedback({
+        tone: 'error',
+        message: 'Roles cannot be hard-deleted in the public demo.',
+      });
+      return;
+    }
     setSaving(`delete:${deleteCandidate.id}`);
     setFeedback(undefined);
     try {
@@ -268,7 +278,7 @@ export default function SettingsPage() {
               </thead>
               <tbody>
                 {members.map((m) => {
-                  const name = memberName(m);
+                  const name = memberName(m, members);
                   return (
                     <tr key={m.id}>
                       <td>
@@ -282,7 +292,7 @@ export default function SettingsPage() {
                           </span>
                         </span>
                       </td>
-                      <td className="muted">{m.email}</td>
+                      <td className="muted">{memberDisplayEmail(m, members)}</td>
                       <td>
                         {m.role?.name ? (
                           <Pill tone="blue"><ShieldCheck size={12} /> {m.role.name}</Pill>
@@ -494,7 +504,9 @@ export default function SettingsPage() {
           <div className="card-pad" style={{ borderBottom: '1px solid var(--border-muted)', background: 'var(--red-soft)' }}>
             <strong>Delete “{deleteCandidate.name}”?</strong>
             <p style={{ margin: '6px 0 12px', fontSize: 13 }}>
-              This permanently deletes the custom role. Continue only if this is the intended role.
+              {isPublicDemo
+                ? 'Hard-delete is not available in the public demo. System and custom role definitions are retained.'
+                : 'This permanently deletes the custom role. Continue only if this is the intended role.'}
             </p>
             <div className="wrap-gap">
               <button

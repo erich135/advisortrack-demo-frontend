@@ -78,7 +78,7 @@ async function loadCompaniesPage(isPlatformAdmin: boolean): Promise<CompaniesPag
   };
 }
 
-function CompanyCard({ c }: { c: CompanyCardModel }) {
+function CompanyCard({ c, href }: { c: CompanyCardModel; href?: string }) {
   const util = utilisationPercent(c.memberCount, c.seatLimit);
   const membersLabel = c.memberCount == null ? '—' : String(c.memberCount);
   const capacityLabel = seatCapacityLabel(c.seatLimit);
@@ -136,9 +136,9 @@ function CompanyCard({ c }: { c: CompanyCardModel }) {
     </div>
   );
 
-  if (!c.isPlatform) {
+  if (href) {
     return (
-      <Link to={`/companies/${c.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+      <Link to={href} style={{ color: 'inherit', textDecoration: 'none' }}>
         {content}
       </Link>
     );
@@ -258,7 +258,11 @@ export default function CompaniesPage() {
 
       <div className="grid grid-3" style={{ marginTop: 16 }}>
         {companies.map((c) => (
-          <CompanyCard key={c.id} c={c} />
+          <CompanyCard
+            key={c.id}
+            c={c}
+            href={mode === 'platform' && !c.isPlatform ? `/companies/${c.id}` : undefined}
+          />
         ))}
         {companies.length === 0 && (
           <div className="card card-pad" style={{ gridColumn: '1 / -1' }}>

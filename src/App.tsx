@@ -17,17 +17,23 @@ import PerformancePage from './pages/PerformancePage';
 import UsersPage from './pages/UsersPage';
 import SettingsPage from './pages/SettingsPage';
 import NotFoundPage from './pages/NotFoundPage';
+import {
+  AUDIT_PERMISSION_DENIED_MESSAGE,
+  AUDIT_PERMISSION_DENIED_TITLE,
+  PermissionDenied,
+} from './components/PermissionDenied';
 import { useAuth } from './lib/useAuth';
 import { isPublicDemo } from './lib/publicDemo';
 import {
   hasLeadershipPortalAccess,
+  isCustomerAuditViewer,
   isCustomerExecutive,
 } from './lib/portalAccess';
 
 function RequireLeadership({ children }: { children: ReactNode }) {
   const { session } = useAuth();
   if (!hasLeadershipPortalAccess(session)) {
-    return <Navigate to="/" replace />;
+    return <PermissionDenied />;
   }
   return children;
 }
@@ -35,18 +41,34 @@ function RequireLeadership({ children }: { children: ReactNode }) {
 function RequirePlatform({ children }: { children: ReactNode }) {
   const { session } = useAuth();
   if (isPublicDemo || !session?.isPlatformAdmin) {
-    return <Navigate to="/" replace />;
+    return <PermissionDenied />;
   }
   return children;
 }
 
 function RequireExecutive({ children }: { children: ReactNode }) {
   const { session } = useAuth();
-  if (isPublicDemo) {
-    return isCustomerExecutive(session) ? children : <Navigate to="/" replace />;
+  const allowed = isPublicDemo
+    ? isCustomerExecutive(session)
+    : Boolean(session?.isPlatformAdmin || isCustomerExecutive(session));
+  if (!allowed) {
+    return <PermissionDenied />;
   }
-  if (!session?.isPlatformAdmin && !isCustomerExecutive(session)) {
-    return <Navigate to="/" replace />;
+  return children;
+}
+
+function RequireAuditViewer({ children }: { children: ReactNode }) {
+  const { session } = useAuth();
+  const allowed = isPublicDemo
+    ? isCustomerAuditViewer(session)
+    : Boolean(session?.isPlatformAdmin || isCustomerAuditViewer(session));
+  if (!allowed) {
+    return (
+      <PermissionDenied
+        title={AUDIT_PERMISSION_DENIED_TITLE}
+        message={AUDIT_PERMISSION_DENIED_MESSAGE}
+      />
+    );
   }
   return children;
 }
@@ -92,17 +114,17 @@ export default function App() {
         <Route
           path="/subscriptions"
           element={
-            <RequirePlatform>
+            <RequireExecutive>
               <SubscriptionsPage />
-            </RequirePlatform>
+            </RequireExecutive>
           }
         />
         <Route
           path="/companies"
           element={
-            <RequirePlatform>
+            <RequireExecutive>
               <CompaniesPage />
-            </RequirePlatform>
+            </RequireExecutive>
           }
         />
         <Route
@@ -116,17 +138,17 @@ export default function App() {
         <Route
           path="/invoices"
           element={
-            <RequirePlatform>
+            <RequireExecutive>
               <InvoicesPage />
-            </RequirePlatform>
+            </RequireExecutive>
           }
         />
         <Route
           path="/audit"
           element={
-            <RequirePlatform>
+            <RequireAuditViewer>
               <AuditPage />
-            </RequirePlatform>
+            </RequireAuditViewer>
           }
         />
         <Route
@@ -140,9 +162,9 @@ export default function App() {
         <Route
           path="/performance"
           element={
-            <RequirePlatform>
+            <RequireLeadership>
               <PerformancePage />
-            </RequirePlatform>
+            </RequireLeadership>
           }
         />
         <Route path="/reports" element={<Navigate to="/performance" replace />} />

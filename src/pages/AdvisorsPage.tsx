@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Search, UserPlus } from 'lucide-react';
 import { ApiError } from '../api/apiClient';
 import { getCompanyMembers, type CompanyMember } from '../api/companyApi';
@@ -6,11 +7,12 @@ import { useAsync } from '../lib/useAsync';
 import { useAuth } from '../lib/useAuth';
 import { Avatar, Pill, SkeletonRows, PageIntro } from '../components/ui';
 import { formatDate } from '../lib/format';
+import { memberDisplayEmail } from '../lib/displayEmail';
 
 const AVATAR_COLORS = ['#0E51E4', '#8957e5', '#2da44e', '#bf8700', '#cf222e', '#020921', '#1a7f37'];
 
 function memberName(m: CompanyMember): string {
-  return `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim() || m.email;
+  return `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim() || memberDisplayEmail(m);
 }
 
 function avatarColorFor(id: string): string {
@@ -43,7 +45,7 @@ export default function AdvisorsPage() {
       })
       .filter((m) => {
         if (!q) return true;
-        const hay = [memberName(m), m.email, m.role?.name ?? '', m.subscription?.name ?? '']
+        const hay = [memberName(m), memberDisplayEmail(m, list), m.email, m.role?.name ?? '', m.subscription?.name ?? '']
           .join(' ')
           .toLowerCase();
         return hay.includes(q);
@@ -126,8 +128,10 @@ export default function AdvisorsPage() {
                       <div className="cell-user">
                         <Avatar name={name} color={avatarColorFor(m.id)} />
                         <div>
-                          <div className="nm">{name}</div>
-                          <div className="sm">{m.email}</div>
+                          <div className="nm">
+                            <Link to={`/advisors/${m.id}`} className="table-link">{name}</Link>
+                          </div>
+                          <div className="sm">{memberDisplayEmail(m, allMembers)}</div>
                         </div>
                       </div>
                     </td>

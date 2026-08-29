@@ -22,9 +22,11 @@ import { useDemoSession } from '../lib/demoSession';
 import {
   hasLeadershipPortalAccess,
   isCustomerExecutive,
+  isCustomerAuditViewer,
   isCustomerPeopleManager,
 } from '../lib/portalAccess';
 import { isPublicDemo } from '../lib/publicDemo';
+import { memberDisplayEmail } from '../lib/displayEmail';
 import type { DemoPublicRole } from '../api/demoApi';
 
 const PUBLIC_DEMO_ROLES: { id: DemoPublicRole; label: string }[] = [
@@ -89,10 +91,10 @@ const titles: Record<string, { title: string; sub: string }> = {
   '/team-pipeline-demo': { title: 'Team Pipeline', sub: 'Seeded ASI demo data only' },
   '/advisors': { title: 'Advisors', sub: 'Everyone using AdvisorTrack' },
   '/production': { title: 'Production', sub: 'Submitted vs issued commission' },
-  '/subscriptions': { title: 'Subscriptions', sub: 'Customer plans, licences & billing' },
-  '/companies': { title: 'Companies', sub: 'Corporate licence pools' },
-  '/invoices': { title: 'Invoices', sub: 'Billing, PDF & invoice delivery' },
-  '/audit': { title: 'Audit', sub: 'Internal administrative history' },
+  '/companies': { title: 'Company', sub: 'Your organisation account' },
+  '/invoices': { title: 'Invoices', sub: 'Billing documents for your organisation' },
+  '/subscriptions': { title: 'Subscription', sub: 'Plan, licences and billing contact' },
+  '/audit': { title: 'Audit', sub: 'Organisation history for your company' },
   '/support': { title: 'Support', sub: 'Customer queries & tickets' },
   '/performance': { title: 'Performance', sub: 'Team and advisor operational performance' },
   '/reports': { title: 'Performance', sub: 'Team and advisor operational performance' },
@@ -132,7 +134,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   const me = users[0];
   const sessionName = session
-    ? `${session.user.firstName ?? ''} ${session.user.lastName ?? ''}`.trim() || session.user.email
+    ? `${session.user.firstName ?? ''} ${session.user.lastName ?? ''}`.trim() || memberDisplayEmail(session.user)
     : me.name;
   const sessionRole =
     session?.hierarchy?.label ||
@@ -148,6 +150,11 @@ export default function Layout({ children }: { children: ReactNode }) {
     ? [...primaryNav, ...businessNav, ...managementNav, ...adminNav]
     : [{ to: '/team-pipeline-demo', label: 'Team Pipeline', icon: <FolderKanban size={18} /> }];
   const leadershipAccess = hasLeadershipPortalAccess(session);
+  const customerBusinessNav: NavEntry[] = isCustomerExecutive(session) ? businessNav : [];
+  const customerManagementNav: NavEntry[] = [
+    ...(leadershipAccess ? [managementNav[0]] : []),
+    ...(isCustomerAuditViewer(session) ? [managementNav[1]] : []),
+  ];
   const customerAdminNav: NavEntry[] = [
     ...(isCustomerPeopleManager(session) ? [adminNav[0]] : []),
     ...(isCustomerExecutive(session) || (!isPublicDemo && session?.isPlatformAdmin) ? [adminNav[1]] : []),
@@ -166,6 +173,18 @@ export default function Layout({ children }: { children: ReactNode }) {
             <>
               <div className="nav-section-label">Overview</div>
               <NavList items={primaryNav} />
+              {customerBusinessNav.length > 0 ? (
+                <>
+                  <div className="nav-section-label">Business</div>
+                  <NavList items={customerBusinessNav} />
+                </>
+              ) : null}
+              {customerManagementNav.length > 0 ? (
+                <>
+                  <div className="nav-section-label">Management</div>
+                  <NavList items={customerManagementNav} />
+                </>
+              ) : null}
               {customerAdminNav.length > 0 ? (
                 <>
                   <div className="nav-section-label">Admin</div>

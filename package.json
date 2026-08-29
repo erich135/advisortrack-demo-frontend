@@ -10,7 +10,9 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "build:demo": "tsc --noEmit && vite build --mode demo"
+    "build:demo": "tsc --noEmit && vite build --mode demo",
+    "test:pipeline-drilldown": "npx --yes tsx scripts/verify-pipeline-drilldown.ts",
+    "test:demo-dashboard": "npx --yes tsx scripts/verify-demo-dashboard.ts"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
