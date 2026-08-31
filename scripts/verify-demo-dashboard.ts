@@ -78,4 +78,9 @@ const companies = src('src/pages/CompaniesPage.tsx');
 assert.match(companies, /mode: 'own'/);
 assert.match(companies, /mode === 'platform' && !c.isPlatform/);
 
+assert.doesNotMatch(app, /EngineeringChangelog/);
+assert.doesNotMatch(app, /engineering\/changelog/);
+assert.doesNotMatch(layout, /label: 'Change Log'/);
+assert.equal(fs.existsSync(path.join(root, 'src/pages/EngineeringChangelogPage.tsx')), false);
+
 console.log('demo-dashboard frontend static checks passed');

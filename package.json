@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "build:demo": "tsc --noEmit && vite build --mode demo",
     "test:pipeline-drilldown": "npx --yes tsx scripts/verify-pipeline-drilldown.ts",
-    "test:demo-dashboard": "npx --yes tsx scripts/verify-demo-dashboard.ts"
+    "test:demo-dashboard": "npx --yes tsx scripts/verify-demo-dashboard.ts",
+    "engineering:context": "npx --yes tsx scripts/engineering-context.ts"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
