@@ -2,11 +2,14 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CreditCard, PlayCircle, UserPlus } from 'lucide-react';
 import { ApiError } from '../api/apiClient';
+import { getCompanySubscription } from '../api/companyApi';
 import { listPlatformSubscriptions } from '../api/platformApi';
-import { PageIntro, Pill, SkeletonRows, StatCard } from '../components/ui';
+import { Button, PageIntro, Pill, SkeletonRows, StatCard, useToast } from '../components/ui';
 import { formatDate, formatZAR } from '../lib/format';
 import { useAsync } from '../lib/useAsync';
 import { useAuth } from '../lib/useAuth';
+import { memberDisplayEmail } from '../lib/displayEmail';
+import { isPublicDemo } from '../lib/publicDemo';
 import { SubscriptionEditor } from './subscriptionEditor';
 
 const statusTone: Record<string, string> = {
@@ -38,10 +41,19 @@ function errorMessage(error: unknown, fallback: string): string {
 
 export default function SubscriptionsPage() {
   const { session } = useAuth();
+  const toast = useToast();
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const customerMode = isPublicDemo || !session?.isPlatformAdmin;
 
-  const list = useAsync(() => listPlatformSubscriptions(), [refreshKey]);
+  const own = useAsync(
+    () => (customerMode ? getCompanySubscription() : Promise.resolve(null)),
+    [customerMode, refreshKey],
+  );
+  const list = useAsync(
+    () => (customerMode ? Promise.resolve(null) : listPlatformSubscriptions()),
+    [customerMode, refreshKey],
+  );
 
   const stats = useMemo(() => {
     const companies = list.data?.companies ?? [];
@@ -54,12 +66,143 @@ export default function SubscriptionsPage() {
 
   const refresh = () => setRefreshKey((value) => value + 1);
 
-  if (!session?.isPlatformAdmin) {
+  if (customerMode) {
+    if (own.loading && !own.data) return <SkeletonRows rows={6} cols={4} />;
+    if (own.error && !own.data) {
+      return (
+        <>
+          <PageIntro>Your AdvisorTrack subscription for this organisation.</PageIntro>
+          <div className="card">
+            <div className="empty" style={{ color: 'var(--red)' }}>
+              {errorMessage(own.error, 'Unable to load subscription.')}
+            </div>
+          </div>
+        </>
+      );
+    }
+    const row = own.data;
+    if (!row) {
+      return (
+        <>
+          <PageIntro>Your AdvisorTrack subscription for this organisation.</PageIntro>
+          <div className="card">
+            <div className="empty">No subscription record is available.</div>
+          </div>
+        </>
+      );
+    }
+    const billingEmail = row.billingContact?.email
+      ? memberDisplayEmail({
+          firstName: row.billingContact.name?.split(' ')[0],
+          lastName: row.billingContact.name?.split(' ').slice(1).join(' '),
+          email: row.billingContact.email,
+        })
+      : null;
     return (
       <>
-        <PageIntro>Internal subscription administration is limited to AdvisorTrack staff.</PageIntro>
-        <div className="card">
-          <div className="empty">You do not have access to customer subscription controls.</div>
+        <PageIntro>
+          Your organisation plan, licence pool, and billing contact. Purchasing additional licences
+          is not available in the public demo.
+        </PageIntro>
+        <div className="grid grid-3">
+          <StatCard
+            label="Plan"
+            value={row.plan?.name ?? '—'}
+            icon={<CreditCard size={18} />}
+            iconBg="var(--brand-soft)"
+            iconColor="var(--brand)"
+          />
+          <StatCard
+            label="Status"
+            value={row.subscriptionStatus}
+            icon={<PlayCircle size={18} />}
+            iconBg="var(--green-soft)"
+            iconColor="var(--green)"
+          />
+          <StatCard
+            label="Assigned licences"
+            value={row.licencePool.assigned}
+            icon={<UserPlus size={18} />}
+            iconBg="var(--purple-soft)"
+            iconColor="var(--purple)"
+          />
+        </div>
+        <div className="card" style={{ marginTop: 16 }}>
+          <div className="table-wrap">
+            <table className="data">
+              <tbody>
+                <tr>
+                  <th>Organisation</th>
+                  <td style={{ fontWeight: 600 }}>{row.company.name}</td>
+                </tr>
+                <tr>
+                  <th>Status</th>
+                  <td>
+                    <Pill tone={statusTone[row.subscriptionStatus] ?? 'grey'}>{row.subscriptionStatus}</Pill>
+                  </td>
+                </tr>
+                <tr>
+                  <th>Plan</th>
+                  <td>{row.plan?.name ?? '—'}</td>
+                </tr>
+                <tr>
+                  <th>Licence price</th>
+                  <td>{priceLabel(row.licencePriceCents, row.currency)}</td>
+                </tr>
+                <tr>
+                  <th>Purchased</th>
+                  <td>{poolLabel(row.licencePool.purchased)}</td>
+                </tr>
+                <tr>
+                  <th>Assigned</th>
+                  <td>{row.licencePool.assigned}</td>
+                </tr>
+                <tr>
+                  <th>Available</th>
+                  <td>{poolLabel(row.licencePool.available)}</td>
+                </tr>
+                <tr>
+                  <th>Billing cycle</th>
+                  <td>{row.billingCycle ?? '—'}</td>
+                </tr>
+                <tr>
+                  <th>Started</th>
+                  <td>{row.subscriptionStartedAt ? formatDate(row.subscriptionStartedAt) : '—'}</td>
+                </tr>
+                <tr>
+                  <th>Next billing</th>
+                  <td>{row.nextBillingAt ? formatDate(row.nextBillingAt) : '—'}</td>
+                </tr>
+                <tr>
+                  <th>VAT</th>
+                  <td>{row.vatTreatment.label}</td>
+                </tr>
+                <tr>
+                  <th>Billing contact</th>
+                  <td>
+                    {row.billingContact?.name || billingEmail ? (
+                      <div>
+                        <div>{row.billingContact?.name || '—'}</div>
+                        {billingEmail ? (
+                          <div className="subtle" style={{ fontSize: 12 }}>{billingEmail}</div>
+                        ) : null}
+                      </div>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="card-pad">
+            <Button
+              type="button"
+              onClick={() => toast.push('Payment actions are disabled in the public demo.', 'info')}
+            >
+              Purchase additional licences
+            </Button>
+          </div>
         </div>
       </>
     );

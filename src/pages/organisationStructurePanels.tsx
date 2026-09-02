@@ -11,6 +11,7 @@ import {
   type OrganisationTeam,
 } from '../api/companyApi';
 import { getPlatformCompanies, type PlatformCompany } from '../api/platformApi';
+import { memberDisplayEmail } from '../lib/displayEmail';
 import {
   Button,
   ConfirmModal,
@@ -31,8 +32,8 @@ function errorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
-function memberLabel(member: CompanyMember): string {
-  return `${member.firstName ?? ''} ${member.lastName ?? ''}`.trim() || member.email;
+function memberLabel(member: CompanyMember, peers: CompanyMember[] = []): string {
+  return `${member.firstName ?? ''} ${member.lastName ?? ''}`.trim() || memberDisplayEmail(member, peers);
 }
 
 function memberHasRank(member: CompanyMember, rank: 'regional_manager' | 'team_leader'): boolean {

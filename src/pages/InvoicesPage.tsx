@@ -27,6 +27,12 @@ import {
   type InvoiceDetail,
   type InvoiceSummary,
 } from '../api/platformApi';
+import {
+  downloadCompanyInvoicePdf,
+  getCompanyInvoice,
+  listCompanyInvoices,
+  sendCompanyInvoice,
+} from '../api/companyApi';
 import { CustomerFormFields } from '../components/forms';
 import { InvoiceDocument, invoiceDetailToPreview, type InvoicePreviewModel } from '../components/InvoiceDocument';
 import {
@@ -52,6 +58,7 @@ import {
 } from '../lib/invoiceMoney';
 import { useAsync } from '../lib/useAsync';
 import { useAuth } from '../lib/useAuth';
+import { isPublicDemo } from '../lib/publicDemo';
 import '../styles/invoice.css';
 
 type DraftLine = {
@@ -158,6 +165,7 @@ const computedLines = (lines: DraftLine[], vatRegistered: boolean) =>
 export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: string }) {
   const { session } = useAuth();
   const toast = useToast();
+  const customerMode = isPublicDemo || (!session?.isPlatformAdmin && !lockedCompanyId);
   const [refreshKey, setRefreshKey] = useState(0);
   const [view, setView] = useState<'list' | 'edit' | 'detail'>('list');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -195,12 +203,18 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
   const [lines, setLines] = useState<DraftLine[]>([emptyLine(false)]);
   const [paymentTerms, setPaymentTerms] = useState('Payment due within 30 days.');
 
-  const list = useAsync(() => listPlatformInvoices(lockedCompanyId), [refreshKey, lockedCompanyId]);
-  const customers = useAsync(() => listPlatformSubscriptions(), []);
+  const list = useAsync(
+    () => (customerMode ? listCompanyInvoices() : listPlatformInvoices(lockedCompanyId)),
+    [refreshKey, lockedCompanyId, customerMode],
+  );
+  const customers = useAsync(
+    () => (customerMode ? Promise.resolve({ companies: [], packages: [] }) : listPlatformSubscriptions()),
+    [customerMode],
+  );
   const detail = useAsync(async () => {
     if (!selectedId || view !== 'detail') return null;
-    return getPlatformInvoice(selectedId);
-  }, [selectedId, view, refreshKey]);
+    return customerMode ? getCompanyInvoice(selectedId) : getPlatformInvoice(selectedId);
+  }, [selectedId, view, refreshKey, customerMode]);
 
   const invoices = list.data?.invoices ?? [];
   const selected = detail.data ?? null;
@@ -215,7 +229,7 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
   }, [lines, vatRegistered]);
 
   useEffect(() => {
-    if (view !== 'edit' || !companyId || editingId) return;
+    if (customerMode || view !== 'edit' || !companyId || editingId) return;
     let active = true;
     getPlatformBillingProfile(companyId)
       .then((profile) => {
@@ -253,7 +267,7 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
     };
   }, [companyId, view, editingId, toast]);
 
-  if (!session?.isPlatformAdmin) {
+  if (!customerMode && !session?.isPlatformAdmin) {
     return (
       <>
         <PageIntro>Internal invoice administration is limited to AdvisorTrack staff.</PageIntro>
@@ -385,7 +399,9 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
   const downloadPdf = async (invoiceId: string) => {
     setBusy(true);
     try {
-      const file = await downloadPlatformInvoicePdf(invoiceId);
+      const file = await (customerMode
+        ? downloadCompanyInvoicePdf(invoiceId)
+        : downloadPlatformInvoicePdf(invoiceId));
       const url = URL.createObjectURL(file.blob);
       const link = document.createElement('a');
       link.href = url;
@@ -429,7 +445,7 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
 
   const preview = previewModel();
 
-  if (view === 'edit') {
+  if (view === 'edit' && !customerMode) {
     return (
       <>
         <PageIntro>Create an internal customer invoice. Totals are calculated automatically and confirmed by the server on save.</PageIntro>
@@ -657,8 +673,9 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
     return (
       <>
         <PageIntro>
-          The PDF is generated from the stored invoice snapshot. Sending emails the same document.
-          Later customer or subscription changes do not alter this record.
+          {customerMode
+            ? 'The PDF is generated from the stored invoice snapshot. Send and resend are simulated — no real email is delivered.'
+            : 'The PDF is generated from the stored invoice snapshot. Sending emails the same document. Later customer or subscription changes do not alter this record.'}
         </PageIntro>
         {deliveryFailed ? (
           <div className="card card-pad" style={{ marginBottom: 16, borderColor: 'var(--red)' }}>
@@ -679,7 +696,7 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
           </div>
           <div className="wrap-gap">
             <Button type="button" onClick={() => { setView('list'); setSelectedId(null); }}>Back</Button>
-            {canEdit ? (
+            {canEdit && !customerMode ? (
               <Button type="button" onClick={() => openEdit(selected.id)} disabled={busy}>Edit Draft</Button>
             ) : null}
             <Button type="button" onClick={() => setPreviewOpen(true)} disabled={busy}>Preview</Button>
@@ -693,8 +710,11 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
                 disabled={busy}
                 onClick={() =>
                   runInvoiceAction(
-                    () => sendPlatformInvoice(selected.id),
-                    `Invoice ${selected.invoiceNumber} sent.`
+                    () =>
+                      customerMode ? sendCompanyInvoice(selected.id) : sendPlatformInvoice(selected.id),
+                    customerMode
+                      ? 'Demo action completed — no real message was sent.'
+                      : `Invoice ${selected.invoiceNumber} sent.`,
                   )
                 }
               >
@@ -708,19 +728,23 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
                 disabled={busy}
                 onClick={() =>
                   runInvoiceAction(
-                    () => sendPlatformInvoice(selected.id),
-                    `Invoice ${selected.invoiceNumber} resent.`
+                    () =>
+                      customerMode ? sendCompanyInvoice(selected.id) : sendPlatformInvoice(selected.id),
+                    customerMode
+                      ? 'Demo action completed — no real message was sent.'
+                      : `Invoice ${selected.invoiceNumber} resent.`,
                   )
                 }
               >
                 <Send size={14} /> Resend Invoice
               </Button>
             ) : null}
-            {canPay ? (
+            {canPay && !customerMode ? (
               <Button type="button" disabled={busy} onClick={() => { setPaymentDate(todayIso()); setPayOpen(true); }}>
                 Mark paid
               </Button>
             ) : null}
+            {!customerMode ? (
             <Button
               type="button"
               disabled={busy}
@@ -730,10 +754,11 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
             >
               <Copy size={14} /> Duplicate
             </Button>
-            {canCancel ? (
+            ) : null}
+            {canCancel && !customerMode ? (
               <Button type="button" disabled={busy} onClick={() => setConfirm('cancel')}>Cancel</Button>
             ) : null}
-            {canVoid ? (
+            {canVoid && !customerMode ? (
               <Button type="button" disabled={busy} onClick={() => setConfirm('void')}>Void</Button>
             ) : null}
           </div>
@@ -850,11 +875,13 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
 
   return (
     <>
-      <PageIntro>
-        {lockedCompanyId
-          ? 'Invoices for this customer. Send Invoice emails the stored snapshot PDF.'
-          : 'Internal invoices for AdvisorTrack customers. Send Invoice emails the stored snapshot PDF.'}
-      </PageIntro>
+        <PageIntro>
+          {customerMode
+            ? 'Invoices for your organisation. Preview and download the stored PDF. Send is simulated in the public demo — no real email is delivered.'
+            : lockedCompanyId
+              ? 'Invoices for this customer. Send Invoice emails the stored snapshot PDF.'
+              : 'Internal invoices for AdvisorTrack customers. Send Invoice emails the stored snapshot PDF.'}
+        </PageIntro>
       <div className="grid grid-4">
         <StatCard label="Outstanding" value={money(outstanding)} icon={<FileText size={18} />} iconBg="var(--amber-soft)" iconColor="var(--amber)" />
         <StatCard label="Paid" value={money(paidTotal)} icon={<CheckCircle2 size={18} />} iconBg="var(--green-soft)" iconColor="var(--green)" />
@@ -864,11 +891,13 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
 
       <div className="row between" style={{ margin: '20px 0 14px' }}>
         <h3 className="section-title" style={{ margin: 0 }}>
-          {lockedCompanyId ? 'Customer invoices' : 'All invoices'}
+          {customerMode || lockedCompanyId ? 'Customer invoices' : 'All invoices'}
         </h3>
+        {!customerMode ? (
         <Button type="button" variant="primary" onClick={openCreate}>
           <Plus size={16} /> Create invoice
         </Button>
+        ) : null}
       </div>
 
       <div className="card">
@@ -901,7 +930,9 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
               {invoices.length === 0 && (
                 <tr>
                   <td colSpan={7}>
-                    <div className="empty">No invoices yet. Create an invoice for a customer.</div>
+                <div className="empty">
+                  {customerMode ? 'No invoices are available for this organisation.' : 'No invoices yet. Create an invoice for a customer.'}
+                </div>
                   </td>
                 </tr>
               )}

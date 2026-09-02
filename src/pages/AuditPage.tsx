@@ -1,14 +1,18 @@
 import { useMemo, useState } from 'react';
 import { History } from 'lucide-react';
-import { ApiError } from '../api/apiClient';
+import { listCompanyAudit } from '../api/companyApi';
 import { getPlatformCompanies, listPlatformAudit, type AdminAuditEvent } from '../api/platformApi';
+import {
+  AUDIT_PERMISSION_DENIED_MESSAGE,
+  AUDIT_PERMISSION_DENIED_TITLE,
+  isPermissionDeniedError,
+  PermissionDenied,
+} from '../components/PermissionDenied';
 import { PageIntro, Pill, SelectInput, SkeletonRows, StatCard } from '../components/ui';
+import { memberDisplayEmail } from '../lib/displayEmail';
+import { isPublicDemo } from '../lib/publicDemo';
 import { useAsync } from '../lib/useAsync';
 import { useAuth } from '../lib/useAuth';
-
-function errorMessage(error: unknown, fallback: string): string {
-  return error instanceof ApiError ? error.message : fallback;
-}
 
 function auditLabel(event: AdminAuditEvent): string {
   if (event.action === 'purchased_licences_changed') {
@@ -19,6 +23,8 @@ function auditLabel(event: AdminAuditEvent): string {
   switch (event.action) {
     case 'user_created':
       return 'User created';
+    case 'user_updated':
+      return 'User updated';
     case 'user_deactivated':
       return 'User deactivated';
     case 'role_changed':
@@ -58,14 +64,15 @@ function displayValue(value: string | number | boolean | null): string {
 
 export default function AuditPage() {
   const { session } = useAuth();
+  const customerMode = isPublicDemo || !session?.isPlatformAdmin;
   const [companyId, setCompanyId] = useState('');
   const companies = useAsync(
-    () => (session?.isPlatformAdmin ? getPlatformCompanies() : Promise.resolve([])),
-    [session?.isPlatformAdmin]
+    () => (!customerMode && session?.isPlatformAdmin ? getPlatformCompanies() : Promise.resolve([])),
+    [customerMode, session?.isPlatformAdmin]
   );
   const loaded = useAsync(
-    () => listPlatformAudit(companyId ? { companyId } : undefined),
-    [companyId]
+    () => (customerMode ? listCompanyAudit() : listPlatformAudit(companyId ? { companyId } : undefined)),
+    [customerMode, companyId]
   );
 
   const events = loaded.data?.events ?? [];
@@ -77,7 +84,7 @@ export default function AuditPage() {
     return map;
   }, [companies.data]);
 
-  if (!session?.isPlatformAdmin) {
+  if (!customerMode && !session?.isPlatformAdmin) {
     return (
       <>
         <PageIntro>Internal administrative history is limited to AdvisorTrack staff.</PageIntro>
@@ -91,13 +98,23 @@ export default function AuditPage() {
   if (loaded.loading && !loaded.data) return <SkeletonRows rows={8} cols={6} />;
 
   if (loaded.error && !loaded.data) {
+    if (isPermissionDeniedError(loaded.error)) {
+      return (
+        <PermissionDenied
+          title={AUDIT_PERMISSION_DENIED_TITLE}
+          message={AUDIT_PERMISSION_DENIED_MESSAGE}
+        />
+      );
+    }
     return (
       <>
-        <PageIntro>Lightweight history of internal customer-administration actions.</PageIntro>
+        <PageIntro>
+          {customerMode
+            ? 'History of administration in your organisation: who changed a user, role, team, region, or licence, and when.'
+            : 'Lightweight history of internal customer-administration actions.'}
+        </PageIntro>
         <div className="card">
-          <div className="empty" style={{ color: 'var(--red)' }}>
-            {errorMessage(loaded.error, 'Unable to load audit history.')}
-          </div>
+          <div className="empty">Unable to load audit history.</div>
         </div>
       </>
     );
@@ -106,8 +123,9 @@ export default function AuditPage() {
   return (
     <>
       <PageIntro>
-        Internal AdvisorTrack history: who performed an action, what changed, and when. This is not
-        a security-monitoring console and is not shown to customer roles.
+        {customerMode
+          ? 'History of administration in your organisation: who changed a user, role, team, region, or licence, and when.'
+          : 'Internal AdvisorTrack history: who performed an action, what changed, and when. This is not a security-monitoring console and is not shown to customer roles.'}
       </PageIntro>
 
       <div className="grid grid-3">
@@ -120,6 +138,7 @@ export default function AuditPage() {
         />
       </div>
 
+      {!customerMode ? (
       <div className="row" style={{ margin: '16px 0', maxWidth: 360 }}>
         <SelectInput value={companyId} onChange={(event) => setCompanyId(event.target.value)}>
           <option value="">All customers</option>
@@ -132,6 +151,7 @@ export default function AuditPage() {
             ))}
         </SelectInput>
       </div>
+      ) : null}
 
       <div className="card">
         <div className="table-wrap">
@@ -141,18 +161,25 @@ export default function AuditPage() {
                 <th>When</th>
                 <th>Who</th>
                 <th>Action</th>
-                <th>Customer</th>
+                {!customerMode ? <th>Customer</th> : null}
                 <th>Previous</th>
                 <th>New</th>
               </tr>
             </thead>
             <tbody>
-              {events.map((event) => (
+              {events.map((event) => {
+                const [firstName, ...lastParts] = (event.actor.name || '').split(' ');
+                const actorEmail = memberDisplayEmail({
+                  firstName,
+                  lastName: lastParts.join(' '),
+                  email: event.actor.email,
+                });
+                return (
                 <tr key={event.id}>
                   <td className="muted">{new Date(event.createdAt).toLocaleString('en-ZA')}</td>
                   <td>
                     <div>{event.actor.name}</div>
-                    <div className="subtle" style={{ fontSize: 12 }}>{event.actor.email}</div>
+                    <div className="subtle" style={{ fontSize: 12 }}>{actorEmail}</div>
                   </td>
                   <td>
                     <Pill tone="blue">{auditLabel(event)}</Pill>
@@ -160,14 +187,17 @@ export default function AuditPage() {
                       <div className="subtle" style={{ fontSize: 12, marginTop: 4 }}>{event.invoiceNumber}</div>
                     ) : null}
                   </td>
-                  <td>{event.companyId ? companyNames.get(event.companyId) ?? event.companyId : '—'}</td>
+                  {!customerMode ? (
+                    <td>{event.companyId ? companyNames.get(event.companyId) ?? event.companyId : '—'}</td>
+                  ) : null}
                   <td>{displayValue(event.previousValue)}</td>
                   <td>{displayValue(event.newValue)}</td>
                 </tr>
-              ))}
+                );
+              })}
               {events.length === 0 && (
                 <tr>
-                  <td colSpan={6}>
+                  <td colSpan={customerMode ? 5 : 6}>
                     <div className="empty">No administrative history recorded yet.</div>
                   </td>
                 </tr>

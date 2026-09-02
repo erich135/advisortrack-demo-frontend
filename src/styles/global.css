@@ -1062,3 +1062,47 @@ textarea.input:focus {
   padding: 1px 5px;
   margin-left: auto;
 }
+
+.table-link {
+  color: var(--brand);
+  font-weight: 600;
+  text-decoration: none;
+}
+.table-link:hover {
+  text-decoration: underline;
+}
+
+.pipeline-graphic {
+  display: flex;
+  align-items: center;
+  min-width: 108px;
+}
+.pipeline-graphic-step {
+  display: flex;
+  align-items: center;
+}
+.pipeline-graphic-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--border);
+}
+.pipeline-graphic-dot.complete {
+  background: var(--brand);
+}
+.pipeline-graphic-dot.current {
+  width: 10px;
+  height: 10px;
+  background: var(--navy);
+  outline: 2px solid var(--brand-soft);
+}
+.pipeline-graphic-line {
+  width: 10px;
+  height: 2px;
+  background: var(--border);
+}
+.pipeline-graphic-dot.complete + .pipeline-graphic-line,
+.pipeline-graphic-dot.current + .pipeline-graphic-line {
+  background: var(--brand-soft);
+}

@@ -20,3 +20,9 @@ export function isCustomerPeopleManager(session: AuthSession | null): boolean {
   const rank = session?.hierarchy?.rank;
   return rank === 'executive' || rank === 'regional_manager' || rank === 'team_leader';
 }
+
+/** Customer-facing Audit Trail: Executive (company) and Regional Manager (downline). */
+export function isCustomerAuditViewer(session: AuthSession | null): boolean {
+  const rank = session?.hierarchy?.rank;
+  return rank === 'executive' || rank === 'regional_manager';
+}

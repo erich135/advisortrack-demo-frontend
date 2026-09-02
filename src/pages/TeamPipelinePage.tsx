@@ -1,4 +1,5 @@
-import { FormEvent, ReactNode, useEffect, useState } from 'react';
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
   BriefcaseBusiness,
@@ -12,8 +13,13 @@ import {
   getManagementPipeline,
   type ManagementPipelineCase,
 } from '../api/managementApi';
+import PipelineStageGraphic from '../components/PipelineStageGraphic';
 import { PageIntro, Pill, SkeletonRows } from '../components/ui';
+import { financialAdvisorsInScope, memberDisplayName } from '../lib/financialAdvisors';
 import { formatDate, formatNumber, formatZAR } from '../lib/format';
+import { readPipelineQuery, writePipelineQuery } from '../lib/pipelineQuery';
+import { advisorDetailsPath } from '../lib/pipelineReturnPath';
+import { PIPELINE_STAGES, getPipelineStageLabel } from '../lib/pipelineStages';
 import { useAsync } from '../lib/useAsync';
 
 const CASE_STATUSES = ['open', 'won', 'lost', 'closed'] as const;
@@ -21,11 +27,6 @@ const CASE_STATUSES = ['open', 'won', 'lost', 'closed'] as const;
 function advisorName(clientCase: ManagementPipelineCase): string {
   const name = `${clientCase.advisor.firstName ?? ''} ${clientCase.advisor.lastName ?? ''}`.trim();
   return name || '—';
-}
-
-function memberName(firstName: string, lastName: string): string {
-  const name = `${firstName ?? ''} ${lastName ?? ''}`.trim();
-  return name || 'Unnamed member';
 }
 
 function safeDate(value: string | null): string {
@@ -85,42 +86,42 @@ function PipelineStatCard({
 }
 
 export default function TeamPipelinePage() {
-  const [advisorId, setAdvisorId] = useState('');
-  const [stage, setStage] = useState('');
-  const [status, setStatus] = useState('');
-  const [searchDraft, setSearchDraft] = useState('');
-  const [search, setSearch] = useState('');
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filters = useMemo(() => readPipelineQuery(searchParams), [searchParams]);
+  const [searchDraft, setSearchDraft] = useState(filters.search);
   const [reloadKey, setReloadKey] = useState(0);
-  const [knownStages, setKnownStages] = useState<string[]>([]);
-
-  const members = useAsync(() => getCompanyMembers(), [reloadKey]);
-  const pipeline = useAsync(
-    () => getManagementPipeline({
-      advisorId: advisorId || undefined,
-      stage: stage || undefined,
-      status: status || undefined,
-      search: search || undefined,
-    }),
-    [advisorId, stage, status, search, reloadKey],
-  );
+  const returnPath = `${location.pathname}${location.search}`;
 
   useEffect(() => {
-    if (!pipeline.data) return;
-    const returnedStages = Object.keys(pipeline.data.stageCounts);
-    setKnownStages((current) => Array.from(new Set([...current, ...returnedStages])));
-  }, [pipeline.data]);
+    setSearchDraft(filters.search);
+  }, [filters.search]);
+
+  const members = useAsync(() => getCompanyMembers(), [reloadKey]);
+  const advisors = financialAdvisorsInScope(members.data);
+  const pipeline = useAsync(
+    () => getManagementPipeline({
+      advisorId: filters.advisor || undefined,
+      stage: filters.stage || undefined,
+      status: filters.status || undefined,
+      search: filters.search || undefined,
+    }),
+    [filters.advisor, filters.stage, filters.status, filters.search, reloadKey],
+  );
+
+  const setFilter = (patch: Partial<typeof filters>) => {
+    const next = { ...filters, ...patch };
+    setSearchParams(writePipelineQuery(next), { replace: true });
+  };
 
   const applySearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSearch(searchDraft.trim());
+    setFilter({ search: searchDraft.trim() });
   };
 
   const clearFilters = () => {
-    setAdvisorId('');
-    setStage('');
-    setStatus('');
     setSearchDraft('');
-    setSearch('');
+    setSearchParams(new URLSearchParams(), { replace: true });
   };
 
   if (pipeline.loading && !pipeline.data) {
@@ -150,9 +151,17 @@ export default function TeamPipelinePage() {
   }
 
   const data = pipeline.data;
-  const activeCaseCount = data.cases.filter((clientCase) => clientCase.status === 'open').length;
-  const stageEntries = Object.entries(data.stageCounts);
-  const hasFilters = Boolean(advisorId || stage || status || search);
+  const stageEntries = PIPELINE_STAGES
+    .map((stage) => [stage, data.stageCounts[stage] ?? 0] as const)
+    .filter(([, count]) => count > 0);
+  const extraStages = Object.entries(data.stageCounts).filter(
+    ([stage]) => !PIPELINE_STAGES.includes(stage as (typeof PIPELINE_STAGES)[number]),
+  );
+  const allStageEntries = [...stageEntries, ...extraStages];
+  const hasFilters = Boolean(filters.advisor || filters.stage || filters.status || filters.search);
+  const advisorCardCount = filters.advisor ? 1 : advisors.length;
+  const overviewCount = data.overviewCaseCount ?? data.caseCount;
+  const activeCount = data.overviewActiveCaseCount ?? data.cases.filter((clientCase) => clientCase.status === 'open').length;
 
   return (
     <>
@@ -163,16 +172,16 @@ export default function TeamPipelinePage() {
       <div className="grid grid-4">
         <PipelineStatCard
           label="Advisors in Scope"
-          value={members.data ? formatNumber(members.data.length) : '—'}
-          detail="Members visible in your management scope"
+          value={members.loading ? '—' : formatNumber(advisorCardCount)}
+          detail={filters.advisor ? 'Selected financial advisor' : 'Financial advisors in your management scope'}
           icon={<Users size={18} />}
           iconBg="var(--brand-soft)"
           iconColor="var(--brand)"
         />
         <PipelineStatCard
           label="Active Cases"
-          value={formatNumber(activeCaseCount)}
-          detail={`${formatNumber(data.caseCount)} total ${data.caseCount === 1 ? 'case' : 'cases'} returned`}
+          value={formatNumber(activeCount)}
+          detail={`${formatNumber(overviewCount)} matching ${overviewCount === 1 ? 'case' : 'cases'} before stage filter`}
           icon={<BriefcaseBusiness size={18} />}
           iconBg="var(--green-soft)"
           iconColor="var(--green)"
@@ -180,15 +189,15 @@ export default function TeamPipelinePage() {
         <PipelineStatCard
           label="Estimated Commission"
           value={data.estimatedCommissionCaseCount > 0 ? formatZAR(data.totalEstimatedCommission) : '—'}
-          detail={`${formatNumber(data.estimatedCommissionCaseCount)} of ${formatNumber(data.caseCount)} cases have a stored estimate`}
+          detail={`${formatNumber(data.estimatedCommissionCaseCount)} of ${formatNumber(overviewCount)} cases have a stored estimate`}
           icon={<Wallet size={18} />}
           iconBg="var(--amber-soft)"
           iconColor="var(--amber)"
         />
         <PipelineStatCard
           label="Active Stages"
-          value={formatNumber(stageEntries.length)}
-          detail="Stages represented in these results"
+          value={formatNumber(allStageEntries.length)}
+          detail="Stages represented before the stage filter"
           icon={<Layers3 size={18} />}
           iconBg="var(--purple-soft)"
           iconColor="var(--purple)"
@@ -208,34 +217,33 @@ export default function TeamPipelinePage() {
           </label>
           <select
             className="input"
-            value={advisorId}
-            onChange={(event) => setAdvisorId(event.target.value)}
-            aria-label="Filter by advisor"
+            value={filters.advisor}
+            onChange={(event) => setFilter({ advisor: event.target.value })}
+            aria-label="Advisor"
             disabled={members.loading || Boolean(members.error)}
           >
-            <option value="">All scoped advisors</option>
-            {(members.data ?? []).map((member) => (
+            <option value="">All Advisors</option>
+            {advisors.map((member) => (
               <option key={member.id} value={member.id}>
-                {memberName(member.firstName, member.lastName)}
+                {memberDisplayName(member)}
               </option>
             ))}
           </select>
           <select
             className="input"
-            value={stage}
-            onChange={(event) => setStage(event.target.value)}
+            value={filters.stage}
+            onChange={(event) => setFilter({ stage: event.target.value })}
             aria-label="Filter by stage"
-            disabled={knownStages.length === 0}
           >
-            <option value="">All returned stages</option>
-            {knownStages.map((stageName) => (
-              <option key={stageName} value={stageName}>{stageName}</option>
+            <option value="">All stages</option>
+            {PIPELINE_STAGES.map((stageName) => (
+              <option key={stageName} value={stageName}>{getPipelineStageLabel(stageName)}</option>
             ))}
           </select>
           <select
             className="input"
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
+            value={filters.status}
+            onChange={(event) => setFilter({ status: event.target.value })}
             aria-label="Filter by status"
           >
             <option value="">All statuses</option>
@@ -260,18 +268,18 @@ export default function TeamPipelinePage() {
       <div className="card" style={{ marginTop: 16 }}>
         <div className="card-head">
           <h3>Stage overview</h3>
-          <span className="hint">Current filtered results</span>
+          <span className="hint">After advisor, status, and search filters — before the stage filter</span>
         </div>
-        {stageEntries.length > 0 ? (
+        {allStageEntries.length > 0 ? (
           <div className="stack" style={{ gap: 14, padding: 20 }}>
-            {stageEntries.map(([stageName, count]) => (
+            {allStageEntries.map(([stageName, count]) => (
               <div key={stageName}>
                 <div className="row between" style={{ marginBottom: 6 }}>
-                  <span style={{ fontWeight: 600 }}>{stageName}</span>
+                  <span style={{ fontWeight: 600 }}>{getPipelineStageLabel(stageName)}</span>
                   <span className="muted">{formatNumber(count)}</span>
                 </div>
                 <div className="progress">
-                  <span style={{ width: `${data.caseCount > 0 ? (count / data.caseCount) * 100 : 0}%` }} />
+                  <span style={{ width: `${overviewCount > 0 ? (count / overviewCount) * 100 : 0}%` }} />
                 </div>
               </div>
             ))}
@@ -284,7 +292,7 @@ export default function TeamPipelinePage() {
       <div className="card" style={{ marginTop: 16 }}>
         <div className="card-head">
           <h3>Cases</h3>
-          <span className="hint">{formatNumber(data.caseCount)} returned</span>
+          <span className="hint">{formatNumber(data.caseCount)} shown</span>
         </div>
         {data.cases.length > 0 ? (
           <div className="table-wrap">
@@ -293,6 +301,7 @@ export default function TeamPipelinePage() {
                 <tr>
                   <th>Client / Advisor</th>
                   <th>Stage / Status</th>
+                  <th>Progress</th>
                   <th className="num">Estimated commission</th>
                   <th>Dates</th>
                   <th>Next action</th>
@@ -302,15 +311,28 @@ export default function TeamPipelinePage() {
               <tbody>
                 {data.cases.map((clientCase) => {
                   const activity = clientCase.nextScheduledActivity;
+                  const name = advisorName(clientCase);
                   return (
                     <tr key={clientCase.caseId}>
                       <td>
-                        <div style={{ fontWeight: 600 }}>{clientCase.contactName || '—'}</div>
-                        <div className="muted" style={{ fontSize: 12 }}>{advisorName(clientCase)}</div>
+                        <div style={{ fontWeight: 600 }}>{clientCase.contactName || clientCase.title || '—'}</div>
+                        <div className="muted" style={{ fontSize: 12 }}>
+                          {clientCase.advisor.userId ? (
+                            <Link
+                              to={advisorDetailsPath(clientCase.advisor.userId, returnPath)}
+                              className="table-link"
+                            >
+                              {name}
+                            </Link>
+                          ) : name}
+                        </div>
                       </td>
                       <td>
-                        <div style={{ fontWeight: 600, marginBottom: 5 }}>{clientCase.currentStage}</div>
+                        <div style={{ fontWeight: 600, marginBottom: 5 }}>{getPipelineStageLabel(clientCase.currentStage)}</div>
                         <Pill tone={statusTone(clientCase.status)}>{clientCase.status}</Pill>
+                      </td>
+                      <td>
+                        <PipelineStageGraphic currentStage={clientCase.currentStage} />
                       </td>
                       <td className="num">
                         {clientCase.estimatedCommission === null
