@@ -21,7 +21,7 @@ import PipelineStageGraphic from '../components/PipelineStageGraphic';
 import { Avatar, Pill, SkeletonRows } from '../components/ui';
 import { financialAdvisorsInScope, memberDisplayName } from '../lib/financialAdvisors';
 import { formatDate, formatNumber, formatZAR, relativeDays } from '../lib/format';
-import { parsePipelineReturnPath } from '../lib/pipelineReturnPath';
+import { parseAdvisorReturnPath, advisorReturnBackLabel } from '../lib/pipelineReturnPath';
 import { getPipelineStageLabel } from '../lib/pipelineStages';
 import { memberDisplayEmail } from '../lib/displayEmail';
 import { useAsync } from '../lib/useAsync';
@@ -91,7 +91,7 @@ export default function AdvisorDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const returnPath = parsePipelineReturnPath(searchParams.get('return'));
+  const returnPath = parseAdvisorReturnPath(searchParams.get('return'));
   const advisorId = id ?? '';
 
   const advisor = useAsync(() => getCompanyMember(advisorId), [advisorId]);
@@ -99,13 +99,9 @@ export default function AdvisorDetailPage() {
   const summary = useAsync(() => getAdvisorSummary(advisorId), [advisorId]);
   const advisors = financialAdvisorsInScope(members.data);
 
-  const backLink = returnPath ? (
-    <Link to={returnPath} className="back-link">
-      <ArrowLeft size={15} /> Back to Team Pipeline
-    </Link>
-  ) : (
-    <Link to="/advisors" className="back-link">
-      <ArrowLeft size={15} /> Back to advisors
+  const backLink = (
+    <Link to={returnPath || '/advisors'} className="back-link">
+      <ArrowLeft size={15} /> {advisorReturnBackLabel(returnPath)}
     </Link>
   );
 

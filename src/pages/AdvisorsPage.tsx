@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Search, UserPlus } from 'lucide-react';
 import { ApiError } from '../api/apiClient';
 import { getCompanyMembers, type CompanyMember } from '../api/companyApi';
+import { AdvisorNameLink } from '../components/AdvisorNameLink';
 import { useAsync } from '../lib/useAsync';
 import { useAuth } from '../lib/useAuth';
 import { Avatar, Pill, SkeletonRows, PageIntro } from '../components/ui';
 import { formatDate } from '../lib/format';
 import { memberDisplayEmail } from '../lib/displayEmail';
+import { ADVISORS_RETURN_PATH } from '../lib/pipelineReturnPath';
 
 const AVATAR_COLORS = ['#0E51E4', '#8957e5', '#2da44e', '#bf8700', '#cf222e', '#020921', '#1a7f37'];
 
@@ -129,7 +130,11 @@ export default function AdvisorsPage() {
                         <Avatar name={name} color={avatarColorFor(m.id)} />
                         <div>
                           <div className="nm">
-                            <Link to={`/advisors/${m.id}`} className="table-link">{name}</Link>
+                            <AdvisorNameLink
+                              advisorId={m.id}
+                              name={name}
+                              returnPath={ADVISORS_RETURN_PATH}
+                            />
                           </div>
                           <div className="sm">{memberDisplayEmail(m, allMembers)}</div>
                         </div>

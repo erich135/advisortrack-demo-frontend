@@ -1,5 +1,5 @@
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
   BriefcaseBusiness,
@@ -18,7 +18,7 @@ import { PageIntro, Pill, SkeletonRows } from '../components/ui';
 import { financialAdvisorsInScope, memberDisplayName } from '../lib/financialAdvisors';
 import { formatDate, formatNumber, formatZAR } from '../lib/format';
 import { readPipelineQuery, writePipelineQuery } from '../lib/pipelineQuery';
-import { advisorDetailsPath } from '../lib/pipelineReturnPath';
+import { AdvisorNameLink } from '../components/AdvisorNameLink';
 import { PIPELINE_STAGES, getPipelineStageLabel } from '../lib/pipelineStages';
 import { useAsync } from '../lib/useAsync';
 
@@ -317,14 +317,11 @@ export default function TeamPipelinePage() {
                       <td>
                         <div style={{ fontWeight: 600 }}>{clientCase.contactName || clientCase.title || '—'}</div>
                         <div className="muted" style={{ fontSize: 12 }}>
-                          {clientCase.advisor.userId ? (
-                            <Link
-                              to={advisorDetailsPath(clientCase.advisor.userId, returnPath)}
-                              className="table-link"
-                            >
-                              {name}
-                            </Link>
-                          ) : name}
+                          <AdvisorNameLink
+                            advisorId={clientCase.advisor.userId}
+                            name={name}
+                            returnPath={returnPath}
+                          />
                         </div>
                       </td>
                       <td>
