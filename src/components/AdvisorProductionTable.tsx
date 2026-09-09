@@ -1,4 +1,5 @@
 import { Avatar, Progress } from './ui';
+import { StickyHorizontalScroll } from './StickyHorizontalScroll';
 import { AdvisorNameLink } from './AdvisorNameLink';
 import type { CompanyMember } from '../api/companyApi';
 import type { ManagementProductionAdvisor } from '../api/managementApi';
@@ -41,7 +42,7 @@ type AdvisorProductionTableProps = {
 /** Dashboard production table. Advisor names drill into Advisor Details. */
 export function AdvisorProductionTable({ advisors, membersById }: AdvisorProductionTableProps) {
   return (
-    <div className="table-wrap">
+    <StickyHorizontalScroll>
       <table className="data">
         <thead>
           <tr>
@@ -96,6 +97,6 @@ export function AdvisorProductionTable({ advisors, membersById }: AdvisorProduct
           })}
         </tbody>
       </table>
-    </div>
+    </StickyHorizontalScroll>
   );
 }

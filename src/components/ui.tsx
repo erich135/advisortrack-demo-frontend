@@ -12,6 +12,7 @@ import {
 } from 'react';
 import { Search } from 'lucide-react';
 import { initials } from '../lib/format';
+import { StickyHorizontalScroll } from './StickyHorizontalScroll';
 
 export function Avatar({
   name,
@@ -164,9 +165,9 @@ export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
 
 export function Table({ children }: { children: ReactNode }) {
   return (
-    <div className="table-wrap">
+    <StickyHorizontalScroll>
       <table className="data">{children}</table>
-    </div>
+    </StickyHorizontalScroll>
   );
 }
 

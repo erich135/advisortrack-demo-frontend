@@ -16,6 +16,7 @@ import {
   getManagementProductionSummary,
 } from '../api/managementApi';
 import { useAsync } from '../lib/useAsync';
+import { StickyHorizontalScroll } from '../components/StickyHorizontalScroll';
 import { Avatar, EmptyState, Pill, StatCard, SkeletonRows, PageIntro } from '../components/ui';
 import { formatZAR, formatDate } from '../lib/format';
 
@@ -141,7 +142,7 @@ export default function ProductionPage() {
       </div>
 
       <div className="card">
-        <div className="table-wrap">
+        <StickyHorizontalScroll>
           <table className="data">
             <thead>
               <tr>
@@ -180,7 +181,7 @@ export default function ProductionPage() {
               })}
             </tbody>
           </table>
-        </div>
+        </StickyHorizontalScroll>
       </div>
     </>
   );

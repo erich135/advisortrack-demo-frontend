@@ -15,6 +15,7 @@ import {
   type CompanyRoleDetail,
 } from '../api/companyApi';
 import { useAsync } from '../lib/useAsync';
+import { StickyHorizontalScroll } from '../components/StickyHorizontalScroll';
 import { Avatar, Pill, SkeletonRows, PageIntro } from '../components/ui';
 import { memberDisplayEmail } from '../lib/displayEmail';
 import { isPublicDemo } from '../lib/publicDemo';
@@ -271,7 +272,7 @@ export default function SettingsPage() {
               {membersUnavailable ? 'Not available for your permissions' : 'Company members in your access scope'}
             </span>
           </div>
-          <div className="table-wrap">
+          <StickyHorizontalScroll>
             <table className="data">
               <thead>
                 <tr><th>Member</th><th>Email</th><th>Role</th></tr>
@@ -316,7 +317,7 @@ export default function SettingsPage() {
                 )}
               </tbody>
             </table>
-          </div>
+          </StickyHorizontalScroll>
         </div>
 
         <div className="card">
@@ -530,7 +531,7 @@ export default function SettingsPage() {
             </div>
           </div>
         ) : null}
-        <div className="table-wrap">
+        <StickyHorizontalScroll>
           {roles.length === 0 || permissions.length === 0 ? (
             <div className="empty">No roles or permissions available for this company yet.</div>
           ) : (
@@ -608,7 +609,7 @@ export default function SettingsPage() {
               </tbody>
             </table>
           )}
-        </div>
+        </StickyHorizontalScroll>
       </div>
     </>
   );

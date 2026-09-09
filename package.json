@@ -13,6 +13,7 @@
     "build:demo": "tsc --noEmit && vite build --mode demo",
     "test:pipeline-drilldown": "npx --yes tsx scripts/verify-pipeline-drilldown.ts",
     "test:advisor-drilldown": "npx --yes tsx scripts/verify-advisor-drilldown-click.ts",
+    "test:sticky-scroll": "npx --yes tsx scripts/verify-sticky-horizontal-scroll.ts",
     "test:demo-dashboard": "npx --yes tsx scripts/verify-demo-dashboard.ts",
     "engineering:context": "npx --yes tsx scripts/engineering-context.ts"
   },

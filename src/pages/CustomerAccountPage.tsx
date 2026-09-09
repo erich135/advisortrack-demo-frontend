@@ -16,6 +16,7 @@ import {
   getPlatformCustomer,
   removePlatformCustomerLicence,
 } from '../api/platformApi';
+import { StickyHorizontalScroll } from '../components/StickyHorizontalScroll';
 import { Button, ConfirmModal, PageIntro, Pill, SkeletonRows, StatCard, useToast } from '../components/ui';
 import { formatDate, formatZAR } from '../lib/format';
 import { useAsync } from '../lib/useAsync';
@@ -313,7 +314,7 @@ function CustomerOverview({
         </Button>
       </div>
       <div className="card">
-        <div className="table-wrap">
+        <StickyHorizontalScroll>
           <table className="data">
             <thead>
               <tr>
@@ -347,7 +348,7 @@ function CustomerOverview({
               )}
             </tbody>
           </table>
-        </div>
+        </StickyHorizontalScroll>
       </div>
     </>
   );

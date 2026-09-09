@@ -32,6 +32,7 @@ import {
   type DemoRoleView,
   type PipelineStage,
 } from '../data/demoTeamPipelineData';
+import { StickyHorizontalScroll } from '../components/StickyHorizontalScroll';
 import { Avatar, Pill, Progress, StatCard, PageIntro } from '../components/ui';
 import { formatZAR, relativeDays } from '../lib/format';
 import { useDemoSession } from '../lib/demoSession';
@@ -799,7 +800,7 @@ function DemoDashboard({ selectedUser }: { selectedUser: DemoPersona }) {
                 <h3>Company overview</h3>
                 <span className="hint">All demo companies</span>
               </div>
-              <div className="table-wrap">
+              <StickyHorizontalScroll>
                 <table className="data">
                   <thead>
                     <tr>
@@ -826,7 +827,7 @@ function DemoDashboard({ selectedUser }: { selectedUser: DemoPersona }) {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </StickyHorizontalScroll>
             </div>
           ) : null}
 
@@ -836,7 +837,7 @@ function DemoDashboard({ selectedUser }: { selectedUser: DemoPersona }) {
                 <h3>Team overview</h3>
                 <span className="hint">ASI only</span>
               </div>
-              <div className="table-wrap">
+              <StickyHorizontalScroll>
                 <table className="data">
                   <thead>
                     <tr>
@@ -863,7 +864,7 @@ function DemoDashboard({ selectedUser }: { selectedUser: DemoPersona }) {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </StickyHorizontalScroll>
             </div>
           ) : null}
 
@@ -1224,7 +1225,7 @@ function DemoDashboard({ selectedUser }: { selectedUser: DemoPersona }) {
                   </Pill>
                 </div>
 
-                <div className="table-wrap" style={{ flex: 1, minHeight: 0 }}>
+                <StickyHorizontalScroll style={{ flex: 1, minHeight: 0 }}>
                 <table className="data">
                   <thead>
                     <tr>
@@ -1299,7 +1300,7 @@ function DemoDashboard({ selectedUser }: { selectedUser: DemoPersona }) {
                     ) : null}
                   </tbody>
                 </table>
-              </div>
+              </StickyHorizontalScroll>
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { KeyRound, UserMinus, UserPlus } from 'lucide-react';
 import type { CompanyMember, LicencePool } from '../api/companyApi';
 import { memberDisplayEmail } from '../lib/displayEmail';
 import { isPublicDemo } from '../lib/publicDemo';
+import { StickyHorizontalScroll } from '../components/StickyHorizontalScroll';
 import { Button, Pill, SearchFilterBar, StatCard, useToast } from '../components/ui';
 import { useMemo, useState } from 'react';
 
@@ -90,7 +91,7 @@ export function LicencesPanel({
       </div>
 
       <div className="card">
-        <div className="table-wrap">
+        <StickyHorizontalScroll>
           <table className="data">
             <thead>
               <tr>
@@ -151,7 +152,7 @@ export function LicencesPanel({
               )}
             </tbody>
           </table>
-        </div>
+        </StickyHorizontalScroll>
       </div>
     </>
   );

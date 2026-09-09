@@ -8,6 +8,7 @@ import {
   isPermissionDeniedError,
   PermissionDenied,
 } from '../components/PermissionDenied';
+import { StickyHorizontalScroll } from '../components/StickyHorizontalScroll';
 import { PageIntro, Pill, SelectInput, SkeletonRows, StatCard } from '../components/ui';
 import { memberDisplayEmail } from '../lib/displayEmail';
 import { isPublicDemo } from '../lib/publicDemo';
@@ -154,7 +155,7 @@ export default function AuditPage() {
       ) : null}
 
       <div className="card">
-        <div className="table-wrap">
+        <StickyHorizontalScroll>
           <table className="data">
             <thead>
               <tr>
@@ -204,7 +205,7 @@ export default function AuditPage() {
               )}
             </tbody>
           </table>
-        </div>
+        </StickyHorizontalScroll>
       </div>
     </>
   );

@@ -14,6 +14,7 @@ import {
   type ManagementPipelineCase,
 } from '../api/managementApi';
 import PipelineStageGraphic from '../components/PipelineStageGraphic';
+import { StickyHorizontalScroll } from '../components/StickyHorizontalScroll';
 import { PageIntro, Pill, SkeletonRows } from '../components/ui';
 import { financialAdvisorsInScope, memberDisplayName } from '../lib/financialAdvisors';
 import { formatDate, formatNumber, formatZAR } from '../lib/format';
@@ -295,7 +296,7 @@ export default function TeamPipelinePage() {
           <span className="hint">{formatNumber(data.caseCount)} shown</span>
         </div>
         {data.cases.length > 0 ? (
-          <div className="table-wrap">
+          <StickyHorizontalScroll>
             <table className="data">
               <thead>
                 <tr>
@@ -367,7 +368,7 @@ export default function TeamPipelinePage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </StickyHorizontalScroll>
         ) : (
           <div className="empty">
             {hasFilters

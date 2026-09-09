@@ -48,6 +48,7 @@ import {
   TextInput,
   useToast,
 } from '../components/ui';
+import { StickyHorizontalScroll } from '../components/StickyHorizontalScroll';
 import { formatDate, formatZAR } from '../lib/format';
 import {
   calculateInvoiceTotals,
@@ -531,7 +532,7 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
               <Plus size={14} /> Add line
             </Button>
           </div>
-          <div className="table-wrap">
+          <StickyHorizontalScroll>
             <table className="data">
               <thead>
                 <tr>
@@ -640,7 +641,7 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
                 })}
               </tbody>
             </table>
-          </div>
+          </StickyHorizontalScroll>
           <div className="inv-totals" style={{ marginTop: 16 }}>
             <div className="inv-total-row"><span>Subtotal</span><span>{liveTotals ? money(liveTotals.subtotalCents) : '—'}</span></div>
             <div className="inv-total-row"><span>VAT</span><span>{liveTotals ? money(liveTotals.vatCents) : '—'}</span></div>
@@ -768,7 +769,7 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
         </div>
         <div className="card card-pad" style={{ marginTop: 16 }}>
           <h3 className="section-title" style={{ marginTop: 0 }}>Delivery history</h3>
-          <div className="table-wrap">
+          <StickyHorizontalScroll>
             <table className="data">
               <thead>
                 <tr>
@@ -813,7 +814,7 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
                 )}
               </tbody>
             </table>
-          </div>
+          </StickyHorizontalScroll>
         </div>
         {previewOpen ? (
           <PreviewDrawer preview={invoiceDetailToPreview(selected)} onClose={() => setPreviewOpen(false)} />
@@ -901,7 +902,7 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
       </div>
 
       <div className="card">
-        <div className="table-wrap">
+        <StickyHorizontalScroll>
           <table className="data">
             <thead>
               <tr>
@@ -938,7 +939,7 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
               )}
             </tbody>
           </table>
-        </div>
+        </StickyHorizontalScroll>
       </div>
     </>
   );

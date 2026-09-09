@@ -5,6 +5,7 @@ import { getCompanyMembers, type CompanyMember } from '../api/companyApi';
 import { AdvisorNameLink } from '../components/AdvisorNameLink';
 import { useAsync } from '../lib/useAsync';
 import { useAuth } from '../lib/useAuth';
+import { StickyHorizontalScroll } from '../components/StickyHorizontalScroll';
 import { Avatar, Pill, SkeletonRows, PageIntro } from '../components/ui';
 import { formatDate } from '../lib/format';
 import { memberDisplayEmail } from '../lib/displayEmail';
@@ -106,7 +107,7 @@ export default function AdvisorsPage() {
       </div>
 
       <div className="card">
-        <div className="table-wrap">
+        <StickyHorizontalScroll>
           <table className="data">
             <thead>
               <tr>
@@ -181,7 +182,7 @@ export default function AdvisorsPage() {
               )}
             </tbody>
           </table>
-        </div>
+        </StickyHorizontalScroll>
       </div>
     </>
   );

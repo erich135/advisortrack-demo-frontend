@@ -18,6 +18,7 @@ import { ApiError } from '../api/apiClient';
 import { getCompanyMember, getCompanyMembers } from '../api/companyApi';
 import { getAdvisorSummary, type ManagementPipelineCase } from '../api/managementApi';
 import PipelineStageGraphic from '../components/PipelineStageGraphic';
+import { StickyHorizontalScroll } from '../components/StickyHorizontalScroll';
 import { Avatar, Pill, SkeletonRows } from '../components/ui';
 import { financialAdvisorsInScope, memberDisplayName } from '../lib/financialAdvisors';
 import { formatDate, formatNumber, formatZAR, relativeDays } from '../lib/format';
@@ -347,7 +348,7 @@ export default function AdvisorDetailPage() {
         ) : summary.error ? (
           <div className="empty" style={{ color: 'var(--red)' }}>Current cases could not be loaded.</div>
         ) : metrics && metrics.cases.length > 0 ? (
-          <div className="table-wrap">
+          <StickyHorizontalScroll>
             <table className="data">
               <thead>
                 <tr>
@@ -393,7 +394,7 @@ export default function AdvisorDetailPage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </StickyHorizontalScroll>
         ) : (
           <div className="empty">This advisor has no open cases in your current management scope.</div>
         )}

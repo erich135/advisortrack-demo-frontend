@@ -33,6 +33,7 @@ import {
   StatCard,
   useToast,
 } from '../components/ui';
+import { StickyHorizontalScroll } from '../components/StickyHorizontalScroll';
 import { formatDate, relativeDays } from '../lib/format';
 import { memberDisplayEmail, emailForMemberUpdate } from '../lib/displayEmail';
 import { isPublicDemo } from '../lib/publicDemo';
@@ -588,7 +589,7 @@ export default function UsersPage({
       </div>
 
       <div className="card">
-        <div className="table-wrap">
+        <StickyHorizontalScroll>
           <table className="data">
             <thead>
               <tr>
@@ -724,7 +725,7 @@ export default function UsersPage({
               )}
             </tbody>
           </table>
-        </div>
+        </StickyHorizontalScroll>
         {filtered.length > PAGE_SIZE ? (
           <Pagination page={currentPage} pageCount={pageCount} onPageChange={setPage} />
         ) : null}

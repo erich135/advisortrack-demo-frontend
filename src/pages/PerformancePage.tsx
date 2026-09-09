@@ -14,6 +14,7 @@ import {
   getManagementProductionSummary,
   type ManagementProductionAdvisor,
 } from '../api/managementApi';
+import { StickyHorizontalScroll } from '../components/StickyHorizontalScroll';
 import { Avatar, PageIntro, Progress, SkeletonRows } from '../components/ui';
 import { formatNumber, formatZAR } from '../lib/format';
 import { useAsync } from '../lib/useAsync';
@@ -219,7 +220,7 @@ export default function PerformancePage() {
           <span className="hint">Issued first, then not yet issued</span>
         </div>
         {rankedAdvisors.length > 0 ? (
-          <div className="table-wrap">
+          <StickyHorizontalScroll>
             <table className="data">
               <thead>
                 <tr>
@@ -258,7 +259,7 @@ export default function PerformancePage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </StickyHorizontalScroll>
         ) : (
           <div className="empty">No advisor production rows are available for {monthLabel}.</div>
         )}
@@ -270,7 +271,7 @@ export default function PerformancePage() {
           <span className="hint">Advisors with stored production goals</span>
         </div>
         {advisorsWithGoals.length > 0 ? (
-          <div className="table-wrap">
+          <StickyHorizontalScroll>
             <table className="data">
               <thead>
                 <tr>
@@ -305,7 +306,7 @@ export default function PerformancePage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </StickyHorizontalScroll>
         ) : (
           <div className="empty">
             Production goals are not currently available for advisors in this scope.

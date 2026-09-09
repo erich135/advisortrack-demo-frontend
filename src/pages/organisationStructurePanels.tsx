@@ -24,6 +24,7 @@ import {
   TextInput,
   useToast,
 } from '../components/ui';
+import { StickyHorizontalScroll } from '../components/StickyHorizontalScroll';
 import { formatDate } from '../lib/format';
 
 const PAGE_SIZE = 20;
@@ -174,7 +175,7 @@ export function RegionsPanel({
         ) : null}
       </div>
       <div className="card">
-        <div className="table-wrap">
+        <StickyHorizontalScroll>
           <table className="data">
             <thead>
               <tr>
@@ -217,7 +218,7 @@ export function RegionsPanel({
               )}
             </tbody>
           </table>
-        </div>
+        </StickyHorizontalScroll>
         {filtered.length > PAGE_SIZE ? (
           <Pagination page={currentPage} pageCount={pageCount} onPageChange={setPage} />
         ) : null}
@@ -375,7 +376,7 @@ export function TeamsPanel({
         ) : null}
       </div>
       <div className="card">
-        <div className="table-wrap">
+        <StickyHorizontalScroll>
           <table className="data">
             <thead>
               <tr>
@@ -420,7 +421,7 @@ export function TeamsPanel({
               )}
             </tbody>
           </table>
-        </div>
+        </StickyHorizontalScroll>
         {filtered.length > PAGE_SIZE ? (
           <Pagination page={currentPage} pageCount={pageCount} onPageChange={setPage} />
         ) : null}

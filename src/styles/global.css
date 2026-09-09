@@ -352,6 +352,26 @@ a:focus-visible {
 .pill.grey { background: var(--border-muted); color: var(--text-muted); }
 
 /* ---------- Tables ---------- */
+.sticky-hscroll {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.sticky-hscroll > .table-wrap {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.sticky-hscroll-bar {
+  display: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--surface);
+  border-top: 1px solid var(--border-muted);
+}
+.sticky-hscroll-spacer {
+  height: 1px;
+  pointer-events: none;
+}
 .table-wrap {
   overflow-x: auto;
 }

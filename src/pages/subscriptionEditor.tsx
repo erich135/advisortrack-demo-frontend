@@ -26,6 +26,7 @@ import {
   type InvoiceSummary,
   type SubscriptionAuditEvent,
 } from '../api/platformApi';
+import { StickyHorizontalScroll } from '../components/StickyHorizontalScroll';
 import { Button, Field, Modal, Pill, SelectInput, SkeletonRows, StatCard, TextInput, useToast } from '../components/ui';
 import { formatDate, formatZAR } from '../lib/format';
 import { useAsync } from '../lib/useAsync';
@@ -466,7 +467,7 @@ function SubscriptionDetail({
       </div>
 
       <h3 className="section-title">Allocation history</h3>
-      <div className="table-wrap" style={{ marginBottom: 20 }}>
+      <StickyHorizontalScroll style={{ marginBottom: 20 }}>
         <table className="data">
           <thead>
             <tr>
@@ -503,7 +504,7 @@ function SubscriptionDetail({
             )}
           </tbody>
         </table>
-      </div>
+      </StickyHorizontalScroll>
 
       <h3 className="section-title">Invoices</h3>
       {invoices.length === 0 ? (
@@ -513,7 +514,7 @@ function SubscriptionDetail({
           <Link to={invoicesHref}>Open Invoices</Link>
         </div>
       ) : (
-        <div className="table-wrap">
+        <StickyHorizontalScroll>
           <table className="data">
             <thead>
               <tr>
@@ -542,7 +543,7 @@ function SubscriptionDetail({
               ))}
             </tbody>
           </table>
-        </div>
+        </StickyHorizontalScroll>
       )}
     </div>
   );
