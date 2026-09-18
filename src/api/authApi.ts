@@ -36,3 +36,11 @@ export async function login(email: string, password: string): Promise<LoginResul
 export async function getMe(): Promise<AuthUser> {
   return apiRequest<AuthUser>('/auth/me');
 }
+
+export async function activateInvitation(token: string, password: string): Promise<{ email: string; message?: string }> {
+  return apiRequest('/auth/activate-invitation', {
+    method: 'POST',
+    auth: false,
+    body: { token, password },
+  });
+}

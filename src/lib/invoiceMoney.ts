@@ -7,7 +7,8 @@ const QUANTITY_SCALE = 10000n;
 const VAT_SCALE = 100n;
 const PERCENT_DIVISOR = 10000n;
 
-export const DEFAULT_VAT_RATE_PERCENT = '15.00';
+export const DEFAULT_VAT_RATE_PERCENT = '0.00';
+export const FUTURE_STANDARD_VAT_RATE_PERCENT = '15.00';
 
 export const roundHalfAwayFromZero = (value: bigint, divisor: bigint): bigint => {
   if (divisor === 0n) {
@@ -102,8 +103,8 @@ const quantityToString = (raw: string | number): string => {
 };
 
 export const calculateLine = (input: InvoiceLineInput): InvoiceLineAmounts => {
-  if (!Number.isInteger(input.unitPriceCents) || input.unitPriceCents < 0) {
-    throw new Error('unitPriceCents must be a non-negative integer');
+  if (!Number.isInteger(input.unitPriceCents)) {
+    throw new Error('unitPriceCents must be an integer');
   }
   const discountCents = input.discountCents ?? 0;
   if (!Number.isInteger(discountCents) || discountCents < 0) {
@@ -114,7 +115,10 @@ export const calculateLine = (input: InvoiceLineInput): InvoiceLineAmounts => {
     throw new Error('quantity must be greater than zero');
   }
   const grossCents = roundHalfAwayFromZero(quantityScaled * BigInt(input.unitPriceCents), QUANTITY_SCALE);
-  if (BigInt(discountCents) > grossCents) {
+  if (grossCents < 0n && discountCents > 0) {
+    throw new Error('discount cannot apply to a negative unit-price line');
+  }
+  if (discountCents > 0 && BigInt(discountCents) > grossCents) {
     throw new Error('discount cannot exceed line gross');
   }
   const lineSubtotalCents = Number(grossCents - BigInt(discountCents));

@@ -16,6 +16,8 @@ dist-ssr
 # Environment variables — NEVER commit these
 .env
 .env.local
+.env.*
+!.env.example
 .env.*.local
 
 # Backups, exports, demo dumps, and secrets
@@ -29,6 +31,8 @@ db-backups/
 *.ppk
 *.p12
 *.pfx
+*credentials*.json
+*secrets*.json
 
 # Editor / OS
 .vscode/*

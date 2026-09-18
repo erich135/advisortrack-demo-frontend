@@ -12,6 +12,7 @@ import { useAuth } from '../lib/useAuth';
 import { memberDisplayEmail } from '../lib/displayEmail';
 import { isPublicDemo } from '../lib/publicDemo';
 import { SubscriptionEditor } from './subscriptionEditor';
+import { CompanySubscriptionSummary } from '../components/CompanySubscriptionSummary';
 
 const statusTone: Record<string, string> = {
   active: 'green',
@@ -91,6 +92,9 @@ export default function SubscriptionsPage() {
           </div>
         </>
       );
+    }
+    if (row.enterprise) {
+      return <CompanySubscriptionSummary summary={row.enterprise} />;
     }
     const billingEmail = row.billingContact?.email
       ? memberDisplayEmail({

@@ -1,5 +1,5 @@
 import { apiDownload, apiRequest } from './apiClient';
-import type { CompanyMember, LicencePool } from './companyApi';
+import type { CompanyMember, CompanyMemberDetail, LicencePool, MemberOffboardingResult } from './companyApi';
 
 export type PlatformCompany = {
   id: string;
@@ -53,6 +53,7 @@ export type CompanySubscription = {
   billingContact: { userId: string | null; name: string | null; email: string | null } | null;
   licencePool: LicencePool;
   createdAt: string;
+  enterprise?: import('../lib/enterpriseContract').CustomerSubscriptionSummary;
 };
 
 export type SubscriptionAuditEvent = {
@@ -119,6 +120,10 @@ export type InvoiceSummary = {
 
 export type InvoiceDetail = InvoiceSummary & {
   poReference: string | null;
+  customerReference?: string | null;
+  billingPeriodStart?: string | null;
+  billingPeriodEnd?: string | null;
+  sourceContractId?: string | null;
   notes: string | null;
   paymentTerms: string | null;
   snapshot: InvoiceSnapshot;
@@ -128,6 +133,10 @@ export type InvoiceDetail = InvoiceSummary & {
   voidedAt: string | null;
   duplicatedFromInvoiceId: string | null;
   updatedAt: string;
+  editable?: boolean;
+  locked?: boolean;
+  vatCharged?: boolean;
+  sellerVatRegistered?: boolean;
   statusEvents: Array<{
     id: string;
     fromStatus: string | null;
@@ -296,6 +305,12 @@ export type InvoiceWriteBody = {
   poReference?: string | null;
   notes?: string | null;
   paymentTerms?: string | null;
+  billingPeriodStart?: string | null;
+  billingPeriodEnd?: string | null;
+  customerReference?: string | null;
+  sourceContractId?: string | null;
+  attachBillingAdjustmentIds?: string[];
+  attachPendingAdjustments?: boolean;
   billing?: {
     registeredName: string;
     tradingName?: string | null;
@@ -346,6 +361,46 @@ export async function sendPlatformInvoice(invoiceId: string): Promise<InvoiceDet
     method: 'POST',
     body: {},
   });
+}
+
+export async function issuePlatformInvoice(invoiceId: string): Promise<InvoiceDetail> {
+  return apiRequest<InvoiceDetail>(`/platform/invoices/${encodeURIComponent(invoiceId)}/issue`, {
+    method: 'POST',
+    body: {},
+  });
+}
+
+export type InvoiceContractPrefill = {
+  companyId: string;
+  companyName: string;
+  planName: string;
+  invoiceDate: string;
+  dueDate: string;
+  billingPeriodStart: string | null;
+  billingPeriodEnd: string | null;
+  poReference: string | null;
+  customerReference: string | null;
+  paymentTerms: string;
+  notes: string | null;
+  billingContactName: string | null;
+  billingEmail: string | null;
+  sourceContractId: string;
+  pricingBasis: string;
+  billingFrequency: string;
+  lines: Array<{
+    description: string;
+    quantity: number;
+    unitPriceCents: number;
+    discountCents: number;
+  }>;
+  editableSnapshot: true;
+  pendingAdjustmentIds?: string[];
+};
+
+export async function getInvoicePrefill(companyId: string): Promise<InvoiceContractPrefill> {
+  return apiRequest<InvoiceContractPrefill>(
+    `/platform/companies/${encodeURIComponent(companyId)}/invoice-prefill`
+  );
 }
 
 export async function markPlatformInvoicePaid(
@@ -417,9 +472,12 @@ export async function createPlatformCustomerMember(
     reportsToUserId?: string | null;
     regionId?: string | null;
     teamId?: string | null;
+    organisationAdmin?: boolean;
+    assignLicence?: boolean;
+    sendInvitation?: boolean;
   }
 ) {
-  return apiRequest<CompanyMember>(`/platform/customers/${encodeURIComponent(companyId)}/members`, {
+  return apiRequest<CompanyMemberDetail>(`/platform/customers/${encodeURIComponent(companyId)}/members`, {
     method: 'POST',
     body,
   });
@@ -446,6 +504,13 @@ export async function updatePlatformCustomerMember(
   );
 }
 
+export async function deactivatePlatformCustomerMember(companyId: string, memberId: string) {
+  return apiRequest<MemberOffboardingResult>(
+    `/platform/customers/${encodeURIComponent(companyId)}/members/${encodeURIComponent(memberId)}/deactivate`,
+    { method: 'POST' }
+  );
+}
+
 export async function assignPlatformCustomerLicence(companyId: string, memberId: string) {
   return apiRequest<CompanyMember>(
     `/platform/customers/${encodeURIComponent(companyId)}/members/${encodeURIComponent(memberId)}/licence`,
@@ -461,7 +526,13 @@ export async function removePlatformCustomerLicence(companyId: string, memberId:
 }
 
 export async function resendPlatformCustomerInvitation(companyId: string, memberId: string) {
-  return apiRequest<{ sent: boolean; email: string }>(
+  return apiRequest<{
+    sent: boolean;
+    email: string;
+    channel?: 'mobile' | 'portal';
+    activationUrl?: string;
+    demoSimulated?: boolean;
+  }>(
     `/platform/customers/${encodeURIComponent(companyId)}/members/${encodeURIComponent(memberId)}/resend-invitation`,
     { method: 'POST' }
   );

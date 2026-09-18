@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Ban, CheckCircle2, KeyRound, Mail, Pencil, Shield, UserPlus, Users } from 'lucide-react';
 import { ApiError } from '../api/apiClient';
 import {
@@ -12,14 +13,16 @@ import {
   removeCompanyMemberLicence,
   resendCompanyMemberInvitation,
   updateCompanyMember,
+  deactivateCompanyMember,
   type AssignableRole,
   type CompanyMember,
   type LicencePool,
   type OrganisationRegion,
   type OrganisationTeam,
 } from '../api/companyApi';
-import { getPlatformCompanyOverview, getPlatformCustomer, listPlatformCustomerAssignableRoles, getPlatformCustomerLicencePool, createPlatformCustomerMember, updatePlatformCustomerMember, assignPlatformCustomerLicence, removePlatformCustomerLicence, resendPlatformCustomerInvitation } from '../api/platformApi';
+import { getPlatformCompanyOverview, getPlatformCustomer, listPlatformCustomerAssignableRoles, getPlatformCustomerLicencePool, createPlatformCustomerMember, updatePlatformCustomerMember, deactivatePlatformCustomerMember, assignPlatformCustomerLicence, removePlatformCustomerLicence, resendPlatformCustomerInvitation } from '../api/platformApi';
 import { UserFormFields } from '../components/forms';
+import { CompanyContextBanner } from '../components/CompanyContext';
 import {
   Avatar,
   Button,
@@ -34,7 +37,8 @@ import {
   useToast,
 } from '../components/ui';
 import { StickyHorizontalScroll } from '../components/StickyHorizontalScroll';
-import { formatDate, relativeDays } from '../lib/format';
+import { formatDate, formatDateTime, relativeDays } from '../lib/format';
+import { sessionCompanyName } from '../lib/companyContext';
 import { memberDisplayEmail, emailForMemberUpdate } from '../lib/displayEmail';
 import { isPublicDemo } from '../lib/publicDemo';
 import { useAsync } from '../lib/useAsync';
@@ -54,6 +58,61 @@ function memberName(member: CompanyMember, peers: CompanyMember[] = []): string 
   return `${member.firstName ?? ''} ${member.lastName ?? ''}`.trim() || memberDisplayEmail(member, peers);
 }
 
+function formatCount(value: number | null | undefined): string {
+  if (value == null) return '—';
+  return value.toLocaleString('en-ZA');
+}
+
+function deactivateConfirmMessage(
+  member: CompanyMember,
+  pool: LicencePool | null,
+  companyName: string | null
+): ReactNode {
+  const name = memberName(member);
+  const licensed = member.licenceStatus === 'Licensed';
+  const afterAssigned = licensed && pool ? Math.max(0, pool.assigned - 1) : pool?.assigned;
+  const afterAvailable =
+    licensed && pool && pool.available != null ? pool.available + 1 : pool?.available;
+  return (
+    <div>
+      <p>Deactivate {name}?</p>
+      <p>{name} will lose access to AdvisorTrack.</p>
+      {licensed ? (
+        <p>
+          Their assigned licence will return to {companyName || 'the company'}
+          {'\u2019'}s available licence pool.
+        </p>
+      ) : (
+        <p>No licence is currently assigned, so the licence pool will not change.</p>
+      )}
+      <p>Historical cases, production and activity records will be retained.</p>
+      <p>This does not delete the user.</p>
+      {pool ? (
+        <>
+          <p>
+            Current licence pool:
+            <br />
+            Purchased: {formatCount(pool.purchased)}
+            <br />
+            Assigned: {formatCount(pool.assigned)}
+            <br />
+            Available: {formatCount(pool.available)}
+          </p>
+          <p>
+            After deactivation:
+            <br />
+            Purchased: {formatCount(pool.purchased)}
+            <br />
+            Assigned: {formatCount(afterAssigned)}
+            <br />
+            Available: {formatCount(afterAvailable)}
+          </p>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 function avatarColorFor(id: string): string {
   let hash = 0;
   for (let i = 0; i < id.length; i++) hash = (hash + id.charCodeAt(i) * (i + 1)) % 997;
@@ -67,6 +126,28 @@ function lastActiveLabel(member: CompanyMember): string {
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
+}
+
+function invitationSummary(member: CompanyMember): { status: string; type: string | null; sent: string | null } {
+  const invitation = member.invitation;
+  if (!invitation) {
+    return { status: member.invitationStatus || 'Not sent', type: null, sent: null };
+  }
+  return {
+    status: invitation.statusLabel,
+    type: invitation.channel === 'mobile' ? 'Mobile' : 'Portal',
+    sent: invitation.sentAt,
+  };
+}
+
+async function copyLocalActivationLink(url: string | undefined): Promise<boolean> {
+  if (!import.meta.env.DEV || !url) return false;
+  try {
+    await navigator.clipboard.writeText(url);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 type UsersPageData = {
@@ -125,6 +206,12 @@ async function loadUsersPage(input?: {
 }
 
 type EditorMode = 'create' | 'edit' | 'view';
+type UsersTab = 'users' | 'regions' | 'teams' | 'licences';
+
+function parseUsersTab(value: string | null): UsersTab | null {
+  if (value === 'users' || value === 'regions' || value === 'teams' || value === 'licences') return value;
+  return null;
+}
 
 const emptyForm = {
   firstName: '',
@@ -134,17 +221,23 @@ const emptyForm = {
   roleId: '',
   teamId: '',
   regionId: '',
+  organisationAdmin: 'no',
+  assignLicence: 'no',
+  sendInvitation: 'yes',
 };
 
 export default function UsersPage({
   scopedCompanyId,
+  scopedCompanyName,
 }: {
   scopedCompanyId?: string;
+  scopedCompanyName?: string;
 } = {}) {
   const { session } = useAuth();
   const toast = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [reloadKey, setReloadKey] = useState(0);
-  const [tab, setTab] = useState<'users' | 'regions' | 'teams' | 'licences'>('users');
+  const [tab, setTab] = useState<UsersTab>(() => parseUsersTab(searchParams.get('tab')) ?? 'users');
   const [structureCompanyId, setStructureCompanyId] = useState(scopedCompanyId || session?.company?.id || '');
   const platformCompanies = useAsync(
     () => (session?.isPlatformAdmin ? loadPlatformCompaniesSafe() : Promise.resolve([])),
@@ -173,7 +266,9 @@ export default function UsersPage({
   const actorRank = session?.hierarchy?.rank ?? (session?.isPlatformAdmin ? 'platform_admin' : null);
   const structureAccess = session?.hierarchy?.structureAccess;
   const canInvite =
-    Boolean(session?.isPlatformAdmin) || (session?.permissions ?? []).includes('manage_members');
+    Boolean(session?.isPlatformAdmin) ||
+    Boolean(session?.isOrganisationAdmin) ||
+    (session?.permissions ?? []).includes('manage_members');
   const showRegionsTab = Boolean(structureAccess?.canViewRegions);
   const showTeamsTab = Boolean(structureAccess?.canViewTeams && actorRank !== 'team_leader');
   const canManageRegions = Boolean(structureAccess?.canManageRegions);
@@ -181,6 +276,43 @@ export default function UsersPage({
   const showLicencesTab = canInvite;
   const structureQueryCompanyId = session?.isPlatformAdmin ? structureCompanyId || undefined : undefined;
   const showTabBar = !scopedCompanyId && (showRegionsTab || showTeamsTab || showLicencesTab);
+  const selectedStructureCompany = (platformCompanies.data ?? []).find(
+    (company) => company.id === structureCompanyId,
+  );
+
+  useEffect(() => {
+    if (!session) return;
+    const fromUrl = parseUsersTab(searchParams.get('tab')) ?? 'users';
+    const allowed: UsersTab =
+      fromUrl === 'regions' && !showRegionsTab
+        ? 'users'
+        : fromUrl === 'teams' && !showTeamsTab
+          ? 'users'
+          : fromUrl === 'licences' && !showLicencesTab
+            ? 'users'
+            : fromUrl;
+    setTab(allowed);
+    if (allowed !== fromUrl) {
+      const nextParams = new URLSearchParams(searchParams);
+      if (allowed === 'users') nextParams.delete('tab');
+      else nextParams.set('tab', allowed);
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [session, searchParams, showRegionsTab, showTeamsTab, showLicencesTab, setSearchParams]);
+
+  function selectTab(next: UsersTab) {
+    setTab(next);
+    const nextParams = new URLSearchParams(searchParams);
+    if (next === 'users') nextParams.delete('tab');
+    else nextParams.set('tab', next);
+    setSearchParams(nextParams, { replace: true });
+  }
+  const pageCompanyName =
+    scopedCompanyName?.trim() ||
+    (session?.isPlatformAdmin && (tab === 'regions' || tab === 'teams')
+      ? selectedStructureCompany?.name?.trim() || null
+      : null) ||
+    sessionCompanyName(session);
 
   const members = loaded.data?.members ?? [];
   const assignableRoles = loaded.data?.assignableRoles ?? [];
@@ -267,6 +399,15 @@ export default function UsersPage({
     setEditor({ mode: 'create', member: null });
   }
 
+  useEffect(() => {
+    if (searchParams.get('new') === '1' && canInvite) {
+      openCreate();
+      searchParams.delete('new');
+      setSearchParams(searchParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, canInvite]);
+
   function openEditor(mode: EditorMode, member: CompanyMember) {
     setForm({
       firstName: member.firstName ?? '',
@@ -286,9 +427,15 @@ export default function UsersPage({
       if (name === 'roleId') {
         next.teamId = actorRank === 'team_leader' ? actorTeamId : '';
         next.regionId = actorRank === 'regional_manager' ? actorRegionId : '';
+        const rank = assignableRoles.find((role) => role.id === value)?.rank;
+        next.assignLicence = rank === 'financial_advisor' && !noneAvailable ? 'yes' : 'no';
       }
       if (name === 'regionId') {
         next.teamId = actorRank === 'team_leader' ? actorTeamId : '';
+      }
+      if (name === 'teamId') {
+        const team = teams.find((item) => item.id === value);
+        if (team?.regionId) next.regionId = team.regionId;
       }
       return next;
     });
@@ -301,40 +448,58 @@ export default function UsersPage({
       toast.push('First name, last name, email and an authorised role are required.', 'error');
       return;
     }
+    if (!form.mobile.trim()) {
+      toast.push('Mobile is required.', 'error');
+      return;
+    }
     const regionId = (actorRank === 'regional_manager' ? actorRegionId : form.regionId) || null;
     const teamId = (actorRank === 'team_leader' ? actorTeamId : form.teamId) || null;
+    if (editor.mode === 'create') {
+      if ((role.rank === 'financial_advisor' || role.rank === 'team_leader') && showTeam && !teamId) {
+        toast.push('Team is required for this reporting role.', 'error');
+        return;
+      }
+      if (role.rank === 'regional_manager' && showRegion && !regionId) {
+        toast.push('Region is required for Regional Manager.', 'error');
+        return;
+      }
+    }
+    const assignLicence = editor.mode === 'create' && form.assignLicence === 'yes' && !noneAvailable;
+    const organisationAdmin = editor.mode === 'create' && form.organisationAdmin === 'yes';
+    const sendInvitation = editor.mode === 'create' ? form.sendInvitation !== 'no' : undefined;
     setSaving(true);
     try {
       if (editor.mode === 'create') {
+        const payload = {
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
+          email: form.email.trim(),
+          phone: form.mobile.trim() || null,
+          roleId: role.id,
+          regionId,
+          teamId,
+          organisationAdmin,
+          assignLicence,
+          sendInvitation,
+        };
         const created = scopedCompanyId
-          ? await createPlatformCustomerMember(scopedCompanyId, {
-              firstName: form.firstName.trim(),
-              lastName: form.lastName.trim(),
-              email: form.email.trim(),
-              phone: form.mobile.trim() || null,
-              roleId: role.id,
-              regionId,
-              teamId,
-            })
-          : await createCompanyMember({
-              firstName: form.firstName.trim(),
-              lastName: form.lastName.trim(),
-              email: form.email.trim(),
-              phone: form.mobile.trim() || null,
-              roleId: role.id,
-              regionId,
-              teamId,
-            });
-        toast.push(
-          'demoSimulated' in created && created.demoSimulated
-            ? 'Demo user created. No real invitation was sent.'
-            : 'invitationSent' in created && created.invitationSent === false
-              ? 'User created. Invitation email is not configured in this environment.'
-              : 'User invited.',
-          'invitationSent' in created && created.invitationSent === false && !('demoSimulated' in created && created.demoSimulated)
-            ? 'info'
-            : 'success',
-        );
+          ? await createPlatformCustomerMember(scopedCompanyId, payload)
+          : await createCompanyMember(payload);
+        if (isPublicDemo || created.demoSimulated) {
+          toast.push('Demo user created. No real invitation was sent.', 'success');
+        } else if (created.invitationRequested === false) {
+          toast.push('User created.', 'success');
+        } else if (created.invitationSent === false) {
+          const copied = await copyLocalActivationLink(created.activationUrl);
+          toast.push(
+            copied
+              ? 'Invitation queued locally. Activation link copied for testing. No external email was sent.'
+              : 'User created. Invitation queued locally. No external email was sent.',
+            'info',
+          );
+        } else {
+          toast.push('User invited.', 'success');
+        }
       } else if (editor.member) {
         const emailUpdate = emailForMemberUpdate(editor.member, form.email, members);
         await (scopedCompanyId
@@ -373,8 +538,8 @@ export default function UsersPage({
     setBusyId(member.id);
     try {
       if (type === 'deactivate') {
-        if (scopedCompanyId) await updatePlatformCustomerMember(scopedCompanyId, member.id, { isActive: false });
-        else await updateCompanyMember(member.id, { isActive: false });
+        if (scopedCompanyId) await deactivatePlatformCustomerMember(scopedCompanyId, member.id);
+        else await deactivateCompanyMember(member.id);
         toast.push(isPublicDemo ? 'Demo account deactivated.' : 'Account deactivated.', 'success');
       } else if (type === 'activate') {
         if (scopedCompanyId) await updatePlatformCustomerMember(scopedCompanyId, member.id, { isActive: true });
@@ -392,14 +557,19 @@ export default function UsersPage({
         const result = scopedCompanyId
           ? await resendPlatformCustomerInvitation(scopedCompanyId, member.id)
           : await resendCompanyMemberInvitation(member.id);
-        toast.push(
-          'demoSimulated' in result && result.demoSimulated
-            ? 'Demo action completed — no real message was sent.'
-            : result.sent
+        if ('demoSimulated' in result && result.demoSimulated) {
+          toast.push('Demo action completed — no real message was sent.', 'success');
+        } else {
+          const copied = await copyLocalActivationLink('activationUrl' in result ? result.activationUrl : undefined);
+          toast.push(
+            result.sent
               ? 'Invitation sent.'
-              : 'Invitation queued. Email is not configured in this environment.',
-          result.sent || ('demoSimulated' in result && result.demoSimulated) ? 'success' : 'info',
-        );
+              : copied
+                ? 'Invitation queued locally. Activation link copied for testing. No external email was sent.'
+                : 'Invitation queued. Email is not configured in this environment.',
+            result.sent ? 'success' : 'info',
+          );
+        }
       }
       setConfirm(null);
       refresh();
@@ -432,9 +602,9 @@ export default function UsersPage({
   const confirmCopy = confirm
     ? {
         deactivate: {
-          title: 'Deactivate account',
-          message: `Deactivate ${memberName(confirm.member)}? They will not be able to sign in.`,
-          confirmLabel: 'Deactivate',
+          title: 'Deactivate User',
+          message: deactivateConfirmMessage(confirm.member, licencePool, pageCompanyName),
+          confirmLabel: 'Deactivate User',
         },
         activate: {
           title: 'Activate account',
@@ -469,14 +639,14 @@ export default function UsersPage({
 
       {showTabBar ? (
         <div className="page-tabs">
-          <Button type="button" variant={tab === 'users' ? 'primary' : 'secondary'} onClick={() => setTab('users')}>
+          <Button type="button" variant={tab === 'users' ? 'primary' : 'secondary'} onClick={() => selectTab('users')}>
             Users
           </Button>
           {showRegionsTab ? (
             <Button
               type="button"
               variant={tab === 'regions' ? 'primary' : 'secondary'}
-              onClick={() => setTab('regions')}
+              onClick={() => selectTab('regions')}
             >
               Regions
             </Button>
@@ -485,7 +655,7 @@ export default function UsersPage({
             <Button
               type="button"
               variant={tab === 'teams' ? 'primary' : 'secondary'}
-              onClick={() => setTab('teams')}
+              onClick={() => selectTab('teams')}
             >
               Teams
             </Button>
@@ -494,7 +664,7 @@ export default function UsersPage({
             <Button
               type="button"
               variant={tab === 'licences' ? 'primary' : 'secondary'}
-              onClick={() => setTab('licences')}
+              onClick={() => selectTab('licences')}
             >
               Licences
             </Button>
@@ -521,6 +691,7 @@ export default function UsersPage({
           members={structureMembers}
           canManage={canManageRegions}
           companyId={structureQueryCompanyId}
+          companyName={pageCompanyName}
           onChanged={refresh}
         />
       ) : null}
@@ -532,6 +703,7 @@ export default function UsersPage({
           members={structureMembers}
           canManage={canManageTeams}
           companyId={structureQueryCompanyId}
+          companyName={pageCompanyName}
           onChanged={refresh}
         />
       ) : null}
@@ -540,6 +712,7 @@ export default function UsersPage({
         <LicencesPanel
           pool={licencePool}
           members={members}
+          companyName={pageCompanyName}
           busyId={busyId}
           onAssign={(member) => setConfirm({ type: 'assignLicence', member })}
           onRemove={(member) => setConfirm({ type: 'removeLicence', member })}
@@ -548,6 +721,7 @@ export default function UsersPage({
 
       {tab === 'users' ? (
       <>
+      <CompanyContextBanner name={pageCompanyName} />
       <div className="grid grid-3">
         <StatCard
           label="Total users"
@@ -600,6 +774,7 @@ export default function UsersPage({
                 <th>Team</th>
                 <th>Region</th>
                 <th>Licence status</th>
+                <th>Invitation</th>
                 <th>Account status</th>
                 <th>Last active</th>
                 <th>Actions</th>
@@ -607,7 +782,7 @@ export default function UsersPage({
             </thead>
             <tbody>
               {paged.map((member) => {
-                const name = memberName(member);
+                const name = memberName(member, members);
                 const actions = member.actions;
                 return (
                   <tr key={member.id}>
@@ -635,6 +810,20 @@ export default function UsersPage({
                       <Pill tone={member.licenceStatus === 'Licensed' ? 'green' : 'grey'}>
                         {member.licenceStatus}
                       </Pill>
+                    </td>
+                    <td data-testid="user-invitation-status">
+                      {(() => {
+                        const summary = invitationSummary(member);
+                        return (
+                          <div>
+                            <div>{summary.status}</div>
+                            {summary.type ? <div className="sm">{summary.type}</div> : null}
+                            {summary.sent ? (
+                              <div className="muted sm">{formatDateTime(summary.sent)}</div>
+                            ) : null}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td>
                       <Pill tone={member.accountStatus === 'Active' ? 'green' : 'grey'}>
@@ -698,7 +887,7 @@ export default function UsersPage({
                             disabled={busyId === member.id}
                             onClick={() => setConfirm({ type: 'deactivate', member })}
                           >
-                            Deactivate
+                            Deactivate User
                           </Button>
                         ) : null}
                         {actions?.resendInvitation ? (
@@ -718,7 +907,7 @@ export default function UsersPage({
               })}
               {paged.length === 0 && (
                 <tr>
-                  <td colSpan={10}>
+                  <td colSpan={11}>
                     <div className="empty">No members to show for your role yet.</div>
                   </td>
                 </tr>
@@ -744,7 +933,13 @@ export default function UsersPage({
             <>
               <Button type="button" onClick={() => setEditor(null)} disabled={saving}>Cancel</Button>
               <Button type="button" variant="primary" onClick={saveEditor} disabled={saving}>
-                {saving ? 'Saving…' : editor?.mode === 'create' ? 'Invite user' : 'Save'}
+                {saving
+                  ? 'Saving…'
+                  : editor?.mode === 'create'
+                    ? form.sendInvitation === 'no'
+                      ? 'Create user'
+                      : 'Invite user'
+                    : 'Save'}
               </Button>
             </>
           )
@@ -752,6 +947,10 @@ export default function UsersPage({
       >
         {editor?.mode === 'view' && editor.member ? (
           <div className="form-grid cols-2">
+            <div className="span-2">
+              <div className="field-label">Company</div>
+              <div data-testid="company-context-view">{pageCompanyName || '—'}</div>
+            </div>
             <div><div className="field-label">Name</div><div>{memberName(editor.member)}</div></div>
             <div><div className="field-label">Email</div><div>{memberDisplayEmail(editor.member, members)}</div></div>
             <div><div className="field-label">Mobile</div><div>{editor.member.phone?.trim() || '—'}</div></div>
@@ -759,6 +958,19 @@ export default function UsersPage({
             <div><div className="field-label">Team</div><div>{editor.member.team?.name || '—'}</div></div>
             <div><div className="field-label">Region</div><div>{editor.member.region?.name || '—'}</div></div>
             <div><div className="field-label">Licence status</div><div>{editor.member.licenceStatus}</div></div>
+            <div>
+              <div className="field-label">Invitation</div>
+              <div data-testid="user-invitation-view">
+                {invitationSummary(editor.member).status}
+                {invitationSummary(editor.member).type ? ` · ${invitationSummary(editor.member).type}` : ''}
+              </div>
+            </div>
+            {editor.member.invitation?.sentAt ? (
+              <div>
+                <div className="field-label">Invitation sent</div>
+                <div>{formatDateTime(editor.member.invitation.sentAt)}</div>
+              </div>
+            ) : null}
             <div><div className="field-label">Account status</div><div>{editor.member.accountStatus}</div></div>
             <div><div className="field-label">Last active</div><div>{lastActiveLabel(editor.member)}</div></div>
             {editor.member.isPlatformAdmin ? (
@@ -775,6 +987,25 @@ export default function UsersPage({
               regionOptions={regionOptions}
               showTeam={showTeam}
               showRegion={showRegion}
+              companyName={pageCompanyName}
+              createMode={editor?.mode === 'create'}
+              licencePool={editor?.mode === 'create' ? licencePool : null}
+              requestLicencesAction={
+                scopedCompanyId ? (
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={() => {
+                      setEditor(null);
+                      selectTab('licences');
+                    }}
+                  >
+                    Add / Request Licences
+                  </button>
+                ) : (
+                  <Link to="/licences">Add / Request Licences</Link>
+                )
+              }
             />
             {assignableRoles.length === 0 ? (
               <p className="muted" style={{ marginTop: 12 }}>

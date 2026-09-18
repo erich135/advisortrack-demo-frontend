@@ -30,6 +30,16 @@ export function formatDate(iso: string): string {
   });
 }
 
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('en-ZA', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export function relativeDays(iso: string): string {
   const ms = new Date(iso).getTime() - Date.now();
   const days = Math.round(ms / 86_400_000);

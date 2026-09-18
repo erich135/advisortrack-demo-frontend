@@ -24,21 +24,36 @@ for (const label of [
   'Team Pipeline',
   'Advisors',
   'Production',
-  'Subscriptions',
   'Invoices',
-  'Companies',
+  'Company Details',
   'Performance',
   'Audit',
   'Users & Access',
   'Settings & Roles',
+  'Regions & Teams',
+  'Licences',
+  'Bulk Import',
+  'Subscription',
 ]) {
   assert.match(layout, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 }
-assert.match(layout, /customerBusinessNav/);
-assert.match(layout, /customerManagementNav/);
-assert.match(layout, /isCustomerExecutive/);
-assert.match(layout, /isCustomerPeopleManager/);
-assert.match(layout, /isCustomerAuditViewer/);
+assert.match(layout, /buildCustomerNav\(session, 'demo'\)/);
+assert.match(layout, /navItemIsActive/);
+assert.doesNotMatch(layout, /customerBusinessNav/);
+assert.doesNotMatch(layout, /Enterprise Customers|Enterprise customers/);
+assert.doesNotMatch(layout, /Licence Requests|Licence requests/);
+assert.doesNotMatch(layout, /Platform \/ Internal/);
+
+const portalNav = src('src/lib/portalNavigation.ts');
+assert.match(portalNav, /buildCustomerNav/);
+assert.match(portalNav, /Company Details/);
+assert.doesNotMatch(portalNav, /enterprise-customers/);
+assert.doesNotMatch(portalNav, /licence-requests/);
+
+const portalAccess = src('src/lib/portalAccess.ts');
+assert.match(portalAccess, /export function isCustomerAuditViewer/);
+assert.match(portalAccess, /rank === 'executive' \|\| rank === 'regional_manager'/);
+assert.match(portalAccess, /export function canViewRegionsAndTeams/);
 
 const users = src('src/pages/UsersPage.tsx');
 assert.match(users, /Demo user updated successfully/);
@@ -51,8 +66,11 @@ assert.match(settings, /Roles cannot be hard-deleted in the public demo/);
 
 const invoices = src('src/pages/InvoicesPage.tsx');
 assert.match(invoices, /listCompanyInvoices/);
-assert.match(invoices, /sendCompanyInvoice/);
+assert.match(invoices, /downloadCompanyInvoicePdf/);
 assert.match(invoices, /customerMode/);
+assert.doesNotMatch(invoices, /sendCompanyInvoice/);
+const companyApi = src('src/api/companyApi.ts');
+assert.match(companyApi, /sendCompanyInvoice/);
 
 const subscriptions = src('src/pages/SubscriptionsPage.tsx');
 assert.match(subscriptions, /getCompanySubscription/);
@@ -69,10 +87,6 @@ assert.match(permissionDenied, /You don’t have access to this feature/);
 assert.match(permissionDenied, /Your current role does not have permission to view this area\./);
 assert.match(permissionDenied, /Audit Trail is available to Regional Managers and Executives/);
 assert.match(permissionDenied, /Back to Dashboard/);
-
-const portalAccess = src('src/lib/portalAccess.ts');
-assert.match(portalAccess, /export function isCustomerAuditViewer/);
-assert.match(portalAccess, /rank === 'executive' \|\| rank === 'regional_manager'/);
 
 const companies = src('src/pages/CompaniesPage.tsx');
 assert.match(companies, /mode: 'own'/);

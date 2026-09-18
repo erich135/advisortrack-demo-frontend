@@ -21,6 +21,8 @@ import {
   listPlatformSubscriptions,
   markPlatformInvoicePaid,
   sendPlatformInvoice,
+  issuePlatformInvoice,
+  getInvoicePrefill,
   updatePlatformDraftInvoice,
   voidPlatformInvoice,
   type CompanyBillingProfile,
@@ -31,7 +33,6 @@ import {
   downloadCompanyInvoicePdf,
   getCompanyInvoice,
   listCompanyInvoices,
-  sendCompanyInvoice,
 } from '../api/companyApi';
 import { CustomerFormFields } from '../components/forms';
 import { InvoiceDocument, invoiceDetailToPreview, type InvoicePreviewModel } from '../components/InvoiceDocument';
@@ -60,6 +61,8 @@ import {
 import { useAsync } from '../lib/useAsync';
 import { useAuth } from '../lib/useAuth';
 import { isPublicDemo } from '../lib/publicDemo';
+import { sellerChargesVat } from '../lib/advisortrackVat';
+import { canViewCompanyInvoices } from '../lib/portalAccess';
 import '../styles/invoice.css';
 
 type DraftLine = {
@@ -184,6 +187,11 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
     invoiceDate: todayIso(),
     dueDate: addDays(todayIso(), 30),
     poNumber: '',
+    customerReference: '',
+    billingPeriodStart: '',
+    billingPeriodEnd: '',
+    sourceContractId: '',
+    attachBillingAdjustmentIds: [] as string[],
     notes: '',
   });
   const [billing, setBilling] = useState<BillingValues>({
@@ -219,28 +227,55 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
 
   const invoices = list.data?.invoices ?? [];
   const selected = detail.data ?? null;
-  const vatRegistered = billing.vatRegistered === 'true';
+  const chargeVat = sellerChargesVat() && billing.vatRegistered === 'true';
 
   const liveTotals = useMemo(() => {
     try {
-      return calculateInvoiceTotals(computedLines(lines, vatRegistered));
+      return calculateInvoiceTotals(computedLines(lines, chargeVat));
     } catch {
       return null;
     }
-  }, [lines, vatRegistered]);
+  }, [lines, chargeVat]);
 
   useEffect(() => {
     if (customerMode || view !== 'edit' || !companyId || editingId) return;
     let active = true;
-    getPlatformBillingProfile(companyId)
-      .then((profile) => {
+    Promise.all([getPlatformBillingProfile(companyId), getInvoicePrefill(companyId).catch(() => null)])
+      .then(([profile, prefill]) => {
         if (!active) return;
         setBilling(billingFromProfile(profile));
+        if (prefill) {
+          setMeta((current) => ({
+            ...current,
+            customer: prefill.companyName || profile.registeredName || profile.company.name,
+            invoiceDate: prefill.invoiceDate,
+            dueDate: prefill.dueDate,
+            poNumber: prefill.poReference ?? '',
+            customerReference: prefill.customerReference ?? '',
+            billingPeriodStart: prefill.billingPeriodStart ?? '',
+            billingPeriodEnd: prefill.billingPeriodEnd ?? '',
+            sourceContractId: prefill.sourceContractId,
+            attachBillingAdjustmentIds: prefill.pendingAdjustmentIds ?? [],
+            notes: prefill.notes ?? '',
+          }));
+          if (prefill.paymentTerms) setPaymentTerms(prefill.paymentTerms);
+          setBilling((current) => ({
+            ...current,
+            billingContact: prefill.billingContactName ?? current.billingContact,
+            billingEmail: prefill.billingEmail ?? current.billingEmail,
+          }));
+          setLines(
+            prefill.lines.map((line) => ({
+              description: line.description,
+              quantity: String(line.quantity),
+              unitPrice: centsToRand(line.unitPriceCents),
+              discount: centsToRand(line.discountCents),
+              vatRatePercent: '0.00',
+            }))
+          );
+          return;
+        }
         setMeta((current) => ({ ...current, customer: profile.registeredName || profile.company.name }));
-        const vat = profile.vatRegistered;
-        const rate = vat
-          ? String(profile.vatRatePercent ?? profile.subscription.vatRatePercent ?? 15)
-          : '0.00';
         const quantity =
           profile.subscription.purchased != null ? String(profile.subscription.purchased) : '1';
         const unitPrice =
@@ -256,7 +291,7 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
             quantity,
             unitPrice,
             discount: '0.00',
-            vatRatePercent: rate,
+            vatRatePercent: '0.00',
           },
         ]);
       })
@@ -266,12 +301,23 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
     return () => {
       active = false;
     };
-  }, [companyId, view, editingId, toast]);
+  }, [companyId, view, editingId, toast, customerMode]);
 
   if (!customerMode && !session?.isPlatformAdmin) {
     return (
       <>
         <PageIntro>Internal invoice administration is limited to AdvisorTrack staff.</PageIntro>
+        <div className="card">
+          <div className="empty">You do not have access to customer invoices.</div>
+        </div>
+      </>
+    );
+  }
+
+  if (customerMode && !canViewCompanyInvoices(session)) {
+    return (
+      <>
+        <PageIntro>Organisation invoices are limited to Organisation Administrators.</PageIntro>
         <div className="card">
           <div className="empty">You do not have access to customer invoices.</div>
         </div>
@@ -300,6 +346,11 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
       invoiceDate: todayIso(),
       dueDate: addDays(todayIso(), 30),
       poNumber: '',
+      customerReference: '',
+      billingPeriodStart: '',
+      billingPeriodEnd: '',
+      sourceContractId: '',
+      attachBillingAdjustmentIds: [],
       notes: '',
     });
     setPaymentTerms('Payment due within 30 days.');
@@ -319,6 +370,11 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
         invoiceDate: invoice.invoiceDate,
         dueDate: invoice.dueDate,
         poNumber: invoice.poReference ?? '',
+        customerReference: invoice.customerReference ?? '',
+        billingPeriodStart: invoice.billingPeriodStart ?? '',
+        billingPeriodEnd: invoice.billingPeriodEnd ?? '',
+        sourceContractId: invoice.sourceContractId ?? '',
+        attachBillingAdjustmentIds: [],
         notes: invoice.notes ?? '',
       });
       setPaymentTerms(invoice.paymentTerms ?? '');
@@ -352,6 +408,13 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
         invoiceDate: meta.invoiceDate,
         dueDate: meta.dueDate,
         poReference: meta.poNumber || null,
+        customerReference: meta.customerReference || null,
+        billingPeriodStart: meta.billingPeriodStart || null,
+        billingPeriodEnd: meta.billingPeriodEnd || null,
+        sourceContractId: meta.sourceContractId || null,
+        attachBillingAdjustmentIds: meta.attachBillingAdjustmentIds?.length
+          ? meta.attachBillingAdjustmentIds
+          : undefined,
         notes: meta.notes || null,
         paymentTerms: paymentTerms || null,
         billing: toBillingPayload(billing),
@@ -360,7 +423,7 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
           quantity: line.quantity,
           unitPrice: line.unitPrice,
           discount: line.discount || '0',
-          vatRatePercent: vatRegistered ? line.vatRatePercent : '0',
+          vatRatePercent: chargeVat ? line.vatRatePercent : '0',
         })),
       };
       const saved = editingId
@@ -427,6 +490,9 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
           invoiceDate: meta.invoiceDate,
           dueDate: meta.dueDate,
           poReference: meta.poNumber,
+          customerReference: meta.customerReference || null,
+          billingPeriodStart: meta.billingPeriodStart || null,
+          billingPeriodEnd: meta.billingPeriodEnd || null,
           notes: meta.notes,
           paymentTerms,
           snapshot: {
@@ -434,7 +500,7 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
             planSlug: null,
             planName: null,
           },
-          lines: computedLines(lines, vatRegistered),
+          lines: computedLines(lines, chargeVat),
           totals: liveTotals,
         };
       } catch {
@@ -492,6 +558,12 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
                 onChange={(event) => setMeta((current) => ({ ...current, poNumber: event.target.value }))}
               />
             </Field>
+            <Field label="Customer reference">
+              <TextInput
+                value={meta.customerReference}
+                onChange={(event) => setMeta((current) => ({ ...current, customerReference: event.target.value }))}
+              />
+            </Field>
             <Field label="Invoice date">
               <DateInput
                 value={meta.invoiceDate}
@@ -502,6 +574,18 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
               <DateInput
                 value={meta.dueDate}
                 onChange={(event) => setMeta((current) => ({ ...current, dueDate: event.target.value }))}
+              />
+            </Field>
+            <Field label="Billing period start">
+              <DateInput
+                value={meta.billingPeriodStart}
+                onChange={(event) => setMeta((current) => ({ ...current, billingPeriodStart: event.target.value }))}
+              />
+            </Field>
+            <Field label="Billing period end">
+              <DateInput
+                value={meta.billingPeriodEnd}
+                onChange={(event) => setMeta((current) => ({ ...current, billingPeriodEnd: event.target.value }))}
               />
             </Field>
             <Field label="Notes">
@@ -524,13 +608,33 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
         <div className="card card-pad" style={{ marginBottom: 16 }}>
           <div className="row between" style={{ marginBottom: 12 }}>
             <h3 className="section-title" style={{ margin: 0 }}>Line items</h3>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => setLines((current) => [...current, emptyLine(vatRegistered)])}
-            >
-              <Plus size={14} /> Add line
-            </Button>
+            <div className="wrap-gap">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setLines((current) => [...current, emptyLine(chargeVat)])}
+              >
+                <Plus size={14} /> Add line
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() =>
+                  setLines((current) => [
+                    ...current,
+                    {
+                      description: 'Negotiated discount',
+                      quantity: '1',
+                      unitPrice: '-10000.00',
+                      discount: '0.00',
+                      vatRatePercent: '0.00',
+                    },
+                  ])
+                }
+              >
+                Add discount line
+              </Button>
+            </div>
           </div>
           <StickyHorizontalScroll>
             <table className="data">
@@ -540,7 +644,7 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
                   <th>Qty</th>
                   <th>Unit price (R)</th>
                   <th>Discount (R)</th>
-                  <th>VAT %</th>
+                  {chargeVat ? <th>VAT %</th> : null}
                   <th className="num">Line total</th>
                   <th></th>
                 </tr>
@@ -555,7 +659,7 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
                         quantity: line.quantity || '1',
                         unitPriceCents: line.unitPrice.trim() ? randToCents(line.unitPrice) : 0,
                         discountCents: line.discount.trim() ? randToCents(line.discount) : 0,
-                        vatRatePercent: vatRegistered ? line.vatRatePercent : '0',
+                        vatRatePercent: chargeVat ? line.vatRatePercent : '0',
                       }).lineTotalCents
                     );
                   } catch {
@@ -611,10 +715,10 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
                           }
                         />
                       </td>
+                      {chargeVat ? (
                       <td>
                         <TextInput
-                          value={vatRegistered ? line.vatRatePercent : '0.00'}
-                          disabled={!vatRegistered}
+                          value={line.vatRatePercent}
                           onChange={(event) =>
                             setLines((current) =>
                               current.map((item, itemIndex) =>
@@ -624,6 +728,7 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
                           }
                         />
                       </td>
+                      ) : null}
                       <td className="num">{lineTotal}</td>
                       <td>
                         {lines.length > 1 ? (
@@ -643,9 +748,11 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
             </table>
           </StickyHorizontalScroll>
           <div className="inv-totals" style={{ marginTop: 16 }}>
-            <div className="inv-total-row"><span>Subtotal</span><span>{liveTotals ? money(liveTotals.subtotalCents) : '—'}</span></div>
-            <div className="inv-total-row"><span>VAT</span><span>{liveTotals ? money(liveTotals.vatCents) : '—'}</span></div>
-            <div className="inv-total-row grand"><span>Total</span><span>{liveTotals ? money(liveTotals.totalCents) : '—'}</span></div>
+            <div className="inv-total-row"><span>Amount</span><span>{liveTotals ? money(liveTotals.subtotalCents) : '—'}</span></div>
+            {chargeVat ? (
+              <div className="inv-total-row"><span>VAT</span><span>{liveTotals ? money(liveTotals.vatCents) : '—'}</span></div>
+            ) : null}
+            <div className="inv-total-row grand"><span>Total due</span><span>{liveTotals ? money(liveTotals.totalCents) : '—'}</span></div>
           </div>
           <div style={{ marginTop: 16 }}>
             <Field label="Notes / payment terms">
@@ -663,20 +770,21 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
 
   if (view === 'detail') {
     if (!selected) return <SkeletonRows rows={6} cols={4} />;
-    const canEdit = selected.status === 'draft';
-    const canSend = selected.status === 'draft';
-    const canResend = selected.status === 'sent' || selected.status === 'paid';
+    const canEdit = selected.status === 'draft' && !customerMode;
+    const canIssue = selected.status === 'draft' && !customerMode;
+    const canSend = selected.status === 'draft' && !customerMode;
+    const canResend = (selected.status === 'sent' || selected.status === 'paid') && !customerMode;
     const lastDelivery = selected.lastDelivery;
     const deliveryFailed = lastDelivery?.status === 'failed';
-    const canPay = selected.status === 'draft' || selected.status === 'sent';
-    const canCancel = selected.status === 'draft' || selected.status === 'sent';
-    const canVoid = selected.status !== 'cancelled' && selected.status !== 'voided';
+    const canPay = (selected.status === 'draft' || selected.status === 'sent') && !customerMode;
+    const canCancel = (selected.status === 'draft' || selected.status === 'sent') && !customerMode;
+    const canVoid = selected.status !== 'cancelled' && selected.status !== 'voided' && !customerMode;
     return (
       <>
         <PageIntro>
           {customerMode
-            ? 'The PDF is generated from the stored invoice snapshot. Send and resend are simulated — no real email is delivered.'
-            : 'The PDF is generated from the stored invoice snapshot. Sending emails the same document. Later customer or subscription changes do not alter this record.'}
+            ? 'Your organisation invoices. You can view and download. Commercial terms cannot be changed here. Demo send is disabled — no real email is delivered.'
+            : 'Draft invoices are editable. Issue Invoice locks the commercial snapshot. Send is simulated in demo and does not deliver real email. Later contract changes do not alter this record.'}
         </PageIntro>
         {deliveryFailed ? (
           <div className="card card-pad" style={{ marginBottom: 16, borderColor: 'var(--red)' }}>
@@ -697,8 +805,23 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
           </div>
           <div className="wrap-gap">
             <Button type="button" onClick={() => { setView('list'); setSelectedId(null); }}>Back</Button>
-            {canEdit && !customerMode ? (
+            {canEdit ? (
               <Button type="button" onClick={() => openEdit(selected.id)} disabled={busy}>Edit Draft</Button>
+            ) : null}
+            {canIssue ? (
+              <Button
+                type="button"
+                variant="primary"
+                disabled={busy}
+                onClick={() =>
+                  runInvoiceAction(
+                    () => issuePlatformInvoice(selected.id),
+                    `Invoice ${selected.invoiceNumber} issued.`
+                  )
+                }
+              >
+                Issue Invoice
+              </Button>
             ) : null}
             <Button type="button" onClick={() => setPreviewOpen(true)} disabled={busy}>Preview</Button>
             <Button type="button" onClick={() => downloadPdf(selected.id)} disabled={busy}>
@@ -711,11 +834,8 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
                 disabled={busy}
                 onClick={() =>
                   runInvoiceAction(
-                    () =>
-                      customerMode ? sendCompanyInvoice(selected.id) : sendPlatformInvoice(selected.id),
-                    customerMode
-                      ? 'Demo action completed — no real message was sent.'
-                      : `Invoice ${selected.invoiceNumber} sent.`,
+                    () => sendPlatformInvoice(selected.id),
+                    `Invoice ${selected.invoiceNumber} sent (simulated).`
                   )
                 }
               >
@@ -729,11 +849,8 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
                 disabled={busy}
                 onClick={() =>
                   runInvoiceAction(
-                    () =>
-                      customerMode ? sendCompanyInvoice(selected.id) : sendPlatformInvoice(selected.id),
-                    customerMode
-                      ? 'Demo action completed — no real message was sent.'
-                      : `Invoice ${selected.invoiceNumber} resent.`,
+                    () => sendPlatformInvoice(selected.id),
+                    `Invoice ${selected.invoiceNumber} resent (simulated).`
                   )
                 }
               >
@@ -878,10 +995,10 @@ export default function InvoicesPage({ lockedCompanyId }: { lockedCompanyId?: st
     <>
         <PageIntro>
           {customerMode
-            ? 'Invoices for your organisation. Preview and download the stored PDF. Send is simulated in the public demo — no real email is delivered.'
+            ? 'Invoices for your organisation. View and download only. Customers cannot issue, edit, or send invoices.'
             : lockedCompanyId
-              ? 'Invoices for this customer. Send Invoice emails the stored snapshot PDF.'
-              : 'Internal invoices for AdvisorTrack customers. Send Invoice emails the stored snapshot PDF.'}
+              ? 'Invoices for this customer. Drafts stay editable until issued.'
+              : 'Internal invoices for AdvisorTrack customers. Drafts stay editable until issued. Demo send is simulated and does not deliver real email.'}
         </PageIntro>
       <div className="grid grid-4">
         <StatCard label="Outstanding" value={money(outstanding)} icon={<FileText size={18} />} iconBg="var(--amber-soft)" iconColor="var(--amber)" />

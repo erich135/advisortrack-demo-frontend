@@ -1,6 +1,7 @@
 import type { InvoiceDetail, InvoiceLine, InvoiceSnapshot } from '../api/platformApi';
 import { formatDate, formatZAR } from '../lib/format';
 import { centsToRand } from '../lib/invoiceMoney';
+import { sellerChargesVat } from '../lib/advisortrackVat';
 
 export type InvoicePreviewModel = {
   invoiceNumber: string;
@@ -9,6 +10,9 @@ export type InvoicePreviewModel = {
   invoiceDate: string;
   dueDate: string;
   poReference?: string | null;
+  customerReference?: string | null;
+  billingPeriodStart?: string | null;
+  billingPeriodEnd?: string | null;
   notes?: string | null;
   paymentTerms?: string | null;
   paymentDate?: string | null;
@@ -54,6 +58,9 @@ export function invoiceDetailToPreview(invoice: InvoiceDetail): InvoicePreviewMo
     invoiceDate: invoice.invoiceDate,
     dueDate: invoice.dueDate,
     poReference: invoice.poReference,
+    customerReference: invoice.customerReference,
+    billingPeriodStart: invoice.billingPeriodStart,
+    billingPeriodEnd: invoice.billingPeriodEnd,
     notes: invoice.notes,
     paymentTerms: invoice.paymentTerms,
     paymentDate: invoice.paymentDate,
@@ -82,7 +89,7 @@ export function InvoiceDocument({ invoice }: { invoice: InvoicePreviewModel }) {
           </div>
         </div>
         <div className="inv-title">
-          <h1>TAX INVOICE</h1>
+          <h1>{sellerChargesVat() ? 'TAX INVOICE' : 'INVOICE'}</h1>
           <div className="inv-num">{invoice.invoiceNumber}</div>
           <span className={`pill ${toneFor(status)}`}>{status}</span>
         </div>
@@ -96,9 +103,9 @@ export function InvoiceDocument({ invoice }: { invoice: InvoicePreviewModel }) {
             <div className="inv-muted">Trading as {snapshot.tradingName}</div>
           ) : null}
           {snapshot.registrationNumber ? <div className="inv-muted">Reg {snapshot.registrationNumber}</div> : null}
-          <div className="inv-muted">
-            {snapshot.vatRegistered ? `VAT ${snapshot.vatNumber || 'registered'}` : 'Not VAT registered'}
-          </div>
+          {sellerChargesVat() && snapshot.vatNumber ? (
+            <div className="inv-muted">VAT {snapshot.vatNumber}</div>
+          ) : null}
           {snapshot.billingContactName ? <div className="inv-muted">{snapshot.billingContactName}</div> : null}
           {snapshot.billingEmail ? <div className="inv-muted">{snapshot.billingEmail}</div> : null}
           {snapshot.telephone ? <div className="inv-muted">{snapshot.telephone}</div> : null}
@@ -109,6 +116,15 @@ export function InvoiceDocument({ invoice }: { invoice: InvoicePreviewModel }) {
           <div className="inv-date-row"><span className="inv-label">Due date</span><span>{formatDate(invoice.dueDate)}</span></div>
           {invoice.poReference ? (
             <div className="inv-date-row"><span className="inv-label">PO / reference</span><span>{invoice.poReference}</span></div>
+          ) : null}
+          {invoice.customerReference ? (
+            <div className="inv-date-row"><span className="inv-label">Customer reference</span><span>{invoice.customerReference}</span></div>
+          ) : null}
+          {invoice.billingPeriodStart || invoice.billingPeriodEnd ? (
+            <div className="inv-date-row">
+              <span className="inv-label">Billing period</span>
+              <span>{invoice.billingPeriodStart ?? 'Open'} – {invoice.billingPeriodEnd ?? 'Open'}</span>
+            </div>
           ) : null}
           {invoice.paymentDate ? (
             <div className="inv-date-row"><span className="inv-label">Payment date</span><span>{formatDate(invoice.paymentDate)}</span></div>
@@ -123,7 +139,7 @@ export function InvoiceDocument({ invoice }: { invoice: InvoicePreviewModel }) {
             <th className="num">Qty</th>
             <th className="num">Unit price</th>
             <th className="num">Discount</th>
-            <th className="num">VAT</th>
+            {sellerChargesVat() ? <th className="num">VAT</th> : null}
             <th className="num">Amount</th>
           </tr>
         </thead>
@@ -134,7 +150,9 @@ export function InvoiceDocument({ invoice }: { invoice: InvoicePreviewModel }) {
               <td className="num">{line.quantity}</td>
               <td className="num">{money(line.unitPriceCents)}</td>
               <td className="num">{money(line.discountCents)}</td>
-              <td className="num">{Number(line.vatRatePercent).toFixed(2)}%</td>
+              {sellerChargesVat() ? (
+                <td className="num">{Number(line.vatRatePercent).toFixed(2)}%</td>
+              ) : null}
               <td className="num">{money(line.lineTotalCents)}</td>
             </tr>
           ))}
@@ -142,8 +160,10 @@ export function InvoiceDocument({ invoice }: { invoice: InvoicePreviewModel }) {
       </table>
 
       <div className="inv-totals">
-        <div className="inv-total-row"><span>Subtotal</span><span>{money(invoice.totals.subtotalCents)}</span></div>
-        <div className="inv-total-row"><span>VAT</span><span>{money(invoice.totals.vatCents)}</span></div>
+        <div className="inv-total-row"><span>Amount</span><span>{money(invoice.totals.subtotalCents)}</span></div>
+        {sellerChargesVat() ? (
+          <div className="inv-total-row"><span>VAT</span><span>{money(invoice.totals.vatCents)}</span></div>
+        ) : null}
         <div className="inv-total-row grand"><span>Total due</span><span>{money(invoice.totals.totalCents)}</span></div>
       </div>
 

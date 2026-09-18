@@ -9,8 +9,8 @@ export const API_BASE_URL = (
         'https://api.advisortrack.co.za/api/v1')
 ).replace(/\/$/, '');
 
-if (isDemoBuild && /^https?:\/\//i.test(API_BASE_URL)) {
-  throw new Error('Demo frontend must not call an absolute API URL.');
+if (isDemoBuild && /api\.advisortrack\.co\.za/i.test(API_BASE_URL)) {
+  throw new Error('Demo frontend must never call the production backend.');
 }
 
 const TOKEN_KEY = 'at_jwt';

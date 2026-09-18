@@ -17,6 +17,9 @@ import PerformancePage from './pages/PerformancePage';
 import UsersPage from './pages/UsersPage';
 import SettingsPage from './pages/SettingsPage';
 import NotFoundPage from './pages/NotFoundPage';
+import LicencesPage from './pages/LicencesPage';
+import CompanySubscriptionPage from './pages/CompanySubscriptionPage';
+import BulkImportPage from './pages/BulkImportPage';
 import {
   AUDIT_PERMISSION_DENIED_MESSAGE,
   AUDIT_PERMISSION_DENIED_TITLE,
@@ -25,7 +28,11 @@ import {
 import { useAuth } from './lib/useAuth';
 import { isPublicDemo } from './lib/publicDemo';
 import {
+  canBulkImportMembers,
+  canViewCompanyInvoices,
+  canViewCompanySubscription,
   hasLeadershipPortalAccess,
+  hasOrganisationAdminAccess,
   isCustomerAuditViewer,
   isCustomerExecutive,
 } from './lib/portalAccess';
@@ -33,6 +40,38 @@ import {
 function RequireLeadership({ children }: { children: ReactNode }) {
   const { session } = useAuth();
   if (!hasLeadershipPortalAccess(session)) {
+    return <PermissionDenied />;
+  }
+  return children;
+}
+
+function RequireOrganisation({ children }: { children: ReactNode }) {
+  const { session } = useAuth();
+  if (!hasOrganisationAdminAccess(session)) {
+    return <PermissionDenied />;
+  }
+  return children;
+}
+
+function RequireCompanyInvoices({ children }: { children: ReactNode }) {
+  const { session } = useAuth();
+  if (!canViewCompanyInvoices(session)) {
+    return <PermissionDenied />;
+  }
+  return children;
+}
+
+function RequireCompanySubscription({ children }: { children: ReactNode }) {
+  const { session } = useAuth();
+  if (!canViewCompanySubscription(session)) {
+    return <PermissionDenied />;
+  }
+  return children;
+}
+
+function RequireBulkImport({ children }: { children: ReactNode }) {
+  const { session } = useAuth();
+  if (!canBulkImportMembers(session)) {
     return <PermissionDenied />;
   }
   return children;
@@ -138,9 +177,9 @@ export default function App() {
         <Route
           path="/invoices"
           element={
-            <RequireExecutive>
+            <RequireCompanyInvoices>
               <InvoicesPage />
-            </RequireExecutive>
+            </RequireCompanyInvoices>
           }
         />
         <Route
@@ -171,9 +210,33 @@ export default function App() {
         <Route
           path="/users"
           element={
-            <RequireLeadership>
+            <RequireOrganisation>
               <UsersPage />
-            </RequireLeadership>
+            </RequireOrganisation>
+          }
+        />
+        <Route
+          path="/licences"
+          element={
+            <RequireOrganisation>
+              <LicencesPage />
+            </RequireOrganisation>
+          }
+        />
+        <Route
+          path="/subscription"
+          element={
+            <RequireCompanySubscription>
+              <CompanySubscriptionPage />
+            </RequireCompanySubscription>
+          }
+        />
+        <Route
+          path="/bulk-import"
+          element={
+            <RequireBulkImport>
+              <BulkImportPage />
+            </RequireBulkImport>
           }
         />
         <Route

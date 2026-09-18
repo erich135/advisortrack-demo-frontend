@@ -13,6 +13,12 @@ export default defineConfig(({ command, mode }) => {
         '@': path.resolve(__dirname, 'src'),
       },
     },
+    optimizeDeps: {
+      include: ['exceljs'],
+    },
+    define: {
+      global: 'globalThis',
+    },
     server: {
       port: isLocalDemoDev ? 5174 : 5173,
       strictPort: isLocalDemoDev,

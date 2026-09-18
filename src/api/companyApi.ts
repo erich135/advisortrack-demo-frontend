@@ -13,6 +13,8 @@ export type CompanyMe = {
   permissions: string[];
   reportsToUserId: string | null;
   isPlatformAdmin: boolean;
+  isOrganisationAdmin?: boolean;
+  canAccessEngineeringChangelog?: boolean;
   hierarchy?: {
     rank: 'platform_admin' | 'executive' | 'regional_manager' | 'team_leader' | 'financial_advisor';
     label: string;
@@ -60,6 +62,31 @@ export type HierarchyRank =
   | 'team_leader'
   | 'financial_advisor';
 
+export type InvitationChannel = 'mobile' | 'portal';
+
+export type InvitationStatusValue =
+  | 'queued'
+  | 'sent'
+  | 'accepted'
+  | 'expired'
+  | 'failed'
+  | 'revoked';
+
+export type MemberInvitation = {
+  id: string;
+  companyId: string;
+  userId: string;
+  channel: InvitationChannel;
+  email: string;
+  status: InvitationStatusValue;
+  statusLabel: string;
+  sentAt: string | null;
+  acceptedAt: string | null;
+  expiresAt: string | null;
+  resendCount: number;
+  failureReason: string | null;
+};
+
 export type CompanyMember = {
   id: string;
   firstName: string;
@@ -75,6 +102,8 @@ export type CompanyMember = {
   subscription: CompanyMemberSubscription | null;
   licenceStatus: 'Licensed' | 'Unlicensed';
   accountStatus: 'Active' | 'Inactive';
+  invitationStatus?: string;
+  invitation?: MemberInvitation | null;
   rank?: HierarchyRank;
   rankLabel?: string;
   team?: ReportingUnit | null;
@@ -86,6 +115,13 @@ export type CompanyMember = {
 export type CompanyMemberDetail = CompanyMember & {
   company: Organisation;
   invitationSent?: boolean;
+  invitationRequested?: boolean;
+  invitationChannel?: InvitationChannel;
+  organisationAdminGranted?: boolean;
+  licenceAssigned?: boolean;
+  portalAccess?: boolean;
+  activationUrl?: string;
+  invitation?: MemberInvitation | null;
   demoSimulated?: boolean;
   message?: string;
 };
@@ -106,6 +142,9 @@ export type CreateCompanyMemberInput = {
   reportsToUserId?: string | null;
   regionId?: string | null;
   teamId?: string | null;
+  organisationAdmin?: boolean;
+  assignLicence?: boolean;
+  sendInvitation?: boolean;
 };
 
 export type UpdateCompanyMemberInput = {
@@ -231,14 +270,36 @@ export async function removeCompanyMemberLicence(memberId: string): Promise<Comp
   });
 }
 
-/** Resend the existing invitation / password-reset PIN. */
+export type MemberOffboardingResult = {
+  member: CompanyMemberDetail;
+  licencePool: LicencePool;
+  licenceReturned: boolean;
+  organisationAdminRevoked: boolean;
+  alreadyInactive: boolean;
+};
+
+/** Deactivate a member, return any assigned licence, and keep history. */
+export async function deactivateCompanyMember(memberId: string): Promise<MemberOffboardingResult> {
+  return apiRequest<MemberOffboardingResult>(`/company/members/${encodeURIComponent(memberId)}/deactivate`, {
+    method: 'POST',
+  });
+}
+
+/** Resend the role-appropriate invitation. */
 export async function resendCompanyMemberInvitation(
   memberId: string,
-): Promise<{ sent: boolean; email: string; demoSimulated?: boolean; message?: string }> {
-  return apiRequest<{ sent: boolean; email: string; demoSimulated?: boolean; message?: string }>(
-    `/company/members/${encodeURIComponent(memberId)}/resend-invitation`,
-    { method: 'POST' },
-  );
+): Promise<{
+  sent: boolean;
+  email: string;
+  channel?: InvitationChannel;
+  activationUrl?: string;
+  invitation?: MemberInvitation | null;
+  demoSimulated?: boolean;
+  message?: string;
+}> {
+  return apiRequest(`/company/members/${encodeURIComponent(memberId)}/resend-invitation`, {
+    method: 'POST',
+  });
 }
 
 /** Roles + permission keys for the signed-in user's company. */
@@ -288,6 +349,174 @@ export async function getCompanyPermissions(): Promise<CompanyPermission[]> {
 /** Customer licence pool for the signed-in user's company. */
 export async function getCompanyLicencePool(): Promise<LicencePool> {
   return apiRequest<LicencePool>('/company/licence-pool');
+}
+
+export type LicenceIncreaseRequest = {
+  id: string;
+  currentPurchased: number | null;
+  additionalRequested: number;
+  proposedTotal: number | null;
+  status: string;
+  statusLabel?: string;
+  notes: string | null;
+  createdAt: string;
+  appliedAt?: string | null;
+  billingTreatment?: string | null;
+  billingTreatmentLabel?: string | null;
+  seatLimitUnchanged?: boolean;
+  contractTerms?: {
+    billingModel?: string | null;
+    additionalSeatPolicy?: string | null;
+    handledAccordingToContract: boolean;
+  } | null;
+};
+
+export type LicenceIncreaseContext = {
+  purchased: number | null;
+  assigned: number;
+  available: number | null;
+  additionalSeatPolicy: string | null;
+  additionalSeatPolicyLabel: string | null;
+  requests: LicenceIncreaseRequest[];
+};
+
+export async function listCompanyLicenceRequests(): Promise<LicenceIncreaseContext> {
+  return apiRequest<LicenceIncreaseContext>('/company/licence-requests');
+}
+
+export async function requestCompanyLicences(body: {
+  additional: number;
+  notes?: string | null;
+}): Promise<LicenceIncreaseRequest> {
+  return apiRequest<LicenceIncreaseRequest>('/company/licence-requests', {
+    method: 'POST',
+    body,
+  });
+}
+
+export async function cancelCompanyLicenceRequest(requestId: string): Promise<LicenceIncreaseRequest> {
+  return apiRequest<LicenceIncreaseRequest>(`/company/licence-requests/${encodeURIComponent(requestId)}/cancel`, {
+    method: 'POST',
+    body: {},
+  });
+}
+
+export async function importCompanyMembers(
+  rows: Array<{
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string | null;
+    roleId?: string;
+  }>
+): Promise<{
+  created: Array<{ email: string; id: string }>;
+  errors: Array<{ email: string; message: string }>;
+  licencesAssigned: number;
+}> {
+  return apiRequest('/company/members/import', {
+    method: 'POST',
+    body: { rows },
+  });
+}
+
+export type BulkImportPreviewRow = {
+  rowNumber: number;
+  firstName: string;
+  lastName: string;
+  name: string;
+  email: string;
+  role: string;
+  region: string;
+  team: string;
+  licence: 'YES' | 'NO';
+  invite: 'YES' | 'NO';
+  organisationAdmin: 'YES' | 'NO';
+  invitationChannel: InvitationChannel | null;
+  status: 'valid' | 'error';
+  errors: string[];
+};
+
+export type BulkImportPreview = {
+  fingerprint: string;
+  wrote: false;
+  canConfirm: boolean;
+  blockReasons: string[];
+  summary: {
+    totalRows: number;
+    valid: number;
+    errors: number;
+    financialAdvisors: number;
+    teamLeaders: number;
+    regionalManagers: number;
+    executives: number;
+    organisationAdmins: number;
+    licences: {
+      purchased: number | null;
+      assigned: number;
+      available: number | null;
+      requested: number;
+      remaining: number | null;
+      shortfall: number;
+    };
+    invitations: {
+      mobile: number;
+      portal: number;
+      none: number;
+    };
+  };
+  rows: BulkImportPreviewRow[];
+};
+
+export type BulkImportConfirmResult = {
+  importId: string | null;
+  wrote: true;
+  status: 'completed' | 'completed_with_row_failures' | 'failed';
+  createdCount: number;
+  failedCount: number;
+  summary: BulkImportPreview['summary'];
+  rows: Array<{
+    rowNumber: number;
+    email: string;
+    status: 'imported' | 'failed';
+    error: string | null;
+  }>;
+};
+
+export type BulkImportPayloadRow = {
+  rowNumber: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  mobile: string;
+  role: string;
+  region: string;
+  team: string;
+  organisation_admin: string;
+  assign_licence: string;
+  send_invitation: string;
+  hasFormula?: boolean;
+};
+
+export async function previewCompanyBulkImport(input: {
+  fileName?: string;
+  rows: BulkImportPayloadRow[];
+}): Promise<BulkImportPreview> {
+  return apiRequest('/company/members/import/preview', {
+    method: 'POST',
+    body: input,
+  });
+}
+
+export async function confirmCompanyBulkImport(input: {
+  fileName?: string;
+  fingerprint: string;
+  rows: BulkImportPayloadRow[];
+}): Promise<BulkImportConfirmResult> {
+  return apiRequest('/company/members/import/confirm', {
+    method: 'POST',
+    body: input,
+  });
 }
 
 /** Own-company commercial subscription. Session-scoped; never a client companyId. */

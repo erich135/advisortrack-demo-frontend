@@ -16,6 +16,7 @@ import {
 } from '../api/companyApi';
 import { useAsync } from '../lib/useAsync';
 import { StickyHorizontalScroll } from '../components/StickyHorizontalScroll';
+import { CompanyContextBanner } from '../components/CompanyContext';
 import { Avatar, Pill, SkeletonRows, PageIntro } from '../components/ui';
 import { memberDisplayEmail } from '../lib/displayEmail';
 import { isPublicDemo } from '../lib/publicDemo';
@@ -249,6 +250,7 @@ export default function SettingsPage() {
           ? 'Company access, roles, and permissions for your organisation.'
           : 'Company access, roles, and permissions for your organisation. Role management is read-only for your account.'}
       </PageIntro>
+      <CompanyContextBanner name={me.company?.name} />
 
       {feedback ? (
         <div

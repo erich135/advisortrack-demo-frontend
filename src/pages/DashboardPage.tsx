@@ -29,6 +29,7 @@ import { AdvisorProductionTable, advisorDisplayName } from '../components/Adviso
 import { Button, EmptyState, SkeletonRows } from '../components/ui';
 import { formatNumber, formatZAR } from '../lib/format';
 import { DASHBOARD_RETURN_PATH } from '../lib/pipelineReturnPath';
+import { sessionCompanyName } from '../lib/companyContext';
 
 const ISSUED_COLOR = '#0E51E4';
 const NOT_YET_ISSUED_COLOR = '#38BDF8';
@@ -144,11 +145,13 @@ export default function DashboardPage() {
   );
 
   if (!leadershipAccess) {
+    const companyName = sessionCompanyName(session);
     return (
       <div className="card">
         <EmptyState title="Use the AdvisorTrack app">
-          Financial Advisors work in the Android app. This management portal is for Executives,
-          Regional Managers, and Team Leaders.
+          {companyName
+            ? `You are signed in to ${companyName}. Financial Advisors work in the Android app. This management portal is for Executives, Regional Managers, and Team Leaders.`
+            : 'Financial Advisors work in the Android app. This management portal is for Executives, Regional Managers, and Team Leaders.'}
         </EmptyState>
       </div>
     );
@@ -174,6 +177,7 @@ export default function DashboardPage() {
 
   const { members, production } = dashboard.data;
   const membersById = new Map(members.map((member) => [member.id, member]));
+  const companyName = sessionCompanyName(session);
   const totalEntries = production.issuedCount + production.nonIssuedCount;
   const totalAmount = production.issuedAmount + production.nonIssuedAmount;
   const hasProductionAmounts = totalAmount > 0;
@@ -195,6 +199,7 @@ export default function DashboardPage() {
   return (
     <>
       <p className="page-intro" style={{ marginTop: 0 }}>
+        {companyName ? `${companyName}. ` : ''}
         Issued Rand value of cases that reached Issued, compared for the {performance.data?.comparisonRole ?? 'leadership'} level in your authorised scope.
       </p>
 

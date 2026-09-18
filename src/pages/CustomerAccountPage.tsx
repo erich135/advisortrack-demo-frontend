@@ -186,7 +186,7 @@ export default function CustomerAccountPage() {
         />
       ) : null}
 
-      {tab === 'users' ? <UsersPage scopedCompanyId={companyId} /> : null}
+      {tab === 'users' ? <UsersPage scopedCompanyId={companyId} scopedCompanyName={account.company.name} /> : null}
 
       {tab === 'subscription' ? <SubscriptionEditor companyId={companyId} onUpdated={refresh} /> : null}
 
@@ -194,6 +194,7 @@ export default function CustomerAccountPage() {
         <LicencesPanel
           pool={pool}
           members={account.members}
+          companyName={account.company.name}
           busyId={busyId}
           onAssign={(member) => setConfirm({ type: 'assign', member })}
           onRemove={(member) => setConfirm({ type: 'remove', member })}

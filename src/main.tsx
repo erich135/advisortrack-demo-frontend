@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Navigate, useLocation } from 'react-router-dom';
 import App from './App';
 import LoginPage from './pages/LoginPage';
+import ActivateAccountPage from './pages/ActivateAccountPage';
 import DemoEntryPage from './pages/DemoEntryPage';
 import { ToastProvider } from './components/ui';
 import { useAuth } from './lib/useAuth';
@@ -19,6 +20,10 @@ function Root() {
   // Team Pipeline demo stays isolated from real Abel auth.
   if (!isPublicDemo && location.pathname.startsWith('/team-pipeline-demo')) {
     return <App />;
+  }
+
+  if (location.pathname.startsWith('/activate')) {
+    return <ActivateAccountPage />;
   }
 
   if (status === 'booting') {

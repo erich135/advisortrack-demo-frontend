@@ -10,6 +10,8 @@ import { Avatar, Pill, SkeletonRows, PageIntro } from '../components/ui';
 import { formatDate } from '../lib/format';
 import { memberDisplayEmail } from '../lib/displayEmail';
 import { ADVISORS_RETURN_PATH } from '../lib/pipelineReturnPath';
+import { sessionCompanyName } from '../lib/companyContext';
+import { CompanyContextBanner } from '../components/CompanyContext';
 
 const AVATAR_COLORS = ['#0E51E4', '#8957e5', '#2da44e', '#bf8700', '#cf222e', '#020921', '#1a7f37'];
 
@@ -34,7 +36,7 @@ export default function AdvisorsPage() {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
-  const companyLabel = session?.company?.name || session?.organisation?.name || null;
+  const companyLabel = sessionCompanyName(session);
 
   const rows = useMemo(() => {
     const list = members.data ?? [];
@@ -84,6 +86,7 @@ export default function AdvisorsPage() {
       <PageIntro>
         Every advisor on the platform.
       </PageIntro>
+      <CompanyContextBanner name={companyLabel} />
 
       <div className="row between" style={{ marginBottom: 16 }}>
         <div className="row" style={{ gap: 10 }}>

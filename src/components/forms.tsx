@@ -1,7 +1,15 @@
-import type { ChangeEvent } from 'react';
+import type { ChangeEvent, ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { DateInput, Field, SelectInput, TextArea, TextInput } from './ui';
+import { CompanyContextField } from './CompanyContext';
 
 export type Option = { value: string; label: string };
+
+export type UserFormLicencePool = {
+  purchased: number | null;
+  assigned: number;
+  available: number | null;
+};
 
 type FormValueHandler = (name: string, value: string) => void;
 
@@ -9,6 +17,37 @@ function onChange(handler: FormValueHandler, name: string) {
   return (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     handler(name, event.target.value);
   };
+}
+
+function formatPoolCount(value: number | null | undefined): string {
+  if (value == null) return 'Unlimited';
+  return String(value);
+}
+
+function YesNoSelect({
+  name,
+  value,
+  onChangeValue,
+  disabled,
+  testId,
+}: {
+  name: string;
+  value: string;
+  onChangeValue: FormValueHandler;
+  disabled?: boolean;
+  testId?: string;
+}) {
+  return (
+    <SelectInput
+      value={value === 'yes' ? 'yes' : 'no'}
+      onChange={onChange(onChangeValue, name)}
+      disabled={disabled}
+      data-testid={testId}
+    >
+      <option value="no">No</option>
+      <option value="yes">Yes</option>
+    </SelectInput>
+  );
 }
 
 /** Presentational user-management field set. Does not submit or persist. */
@@ -21,6 +60,11 @@ export function UserFormFields({
   showTeam = true,
   showRegion = true,
   emailDisabled = false,
+  companyName = null,
+  createMode = false,
+  licencePool = null,
+  requestLicencesHref = '/licences',
+  requestLicencesAction = null,
 }: {
   values: Record<string, string>;
   onChangeValue: FormValueHandler;
@@ -30,9 +74,22 @@ export function UserFormFields({
   showTeam?: boolean;
   showRegion?: boolean;
   emailDisabled?: boolean;
+  companyName?: string | null;
+  createMode?: boolean;
+  licencePool?: UserFormLicencePool | null;
+  requestLicencesHref?: string;
+  requestLicencesAction?: ReactNode;
 }) {
+  const assignLicence = values.assignLicence === 'yes';
+  const noneAvailable = licencePool?.available === 0;
+  const availableAfter =
+    createMode && assignLicence && licencePool?.available != null
+      ? Math.max(0, licencePool.available - 1)
+      : null;
+
   return (
     <div className="form-grid cols-2">
+      <CompanyContextField name={companyName} />
       <Field label="First name">
         <TextInput value={values.firstName ?? ''} onChange={onChange(onChangeValue, 'firstName')} />
       </Field>
@@ -50,17 +107,39 @@ export function UserFormFields({
       <Field label="Mobile">
         <TextInput value={values.mobile ?? ''} onChange={onChange(onChangeValue, 'mobile')} />
       </Field>
-      <Field label="Role">
-        <SelectInput value={values.roleId ?? ''} onChange={onChange(onChangeValue, 'roleId')}>
+      <Field label={createMode ? 'Reporting role' : 'Role'}>
+        <SelectInput
+          value={values.roleId ?? ''}
+          onChange={onChange(onChangeValue, 'roleId')}
+          data-testid="add-user-reporting-role"
+        >
           <option value="">Select role</option>
           {roleOptions.map((option) => (
             <option key={option.value} value={option.value}>{option.label}</option>
           ))}
         </SelectInput>
       </Field>
+      {showRegion ? (
+        <Field label="Region" hint="Organisation region">
+          <SelectInput
+            value={values.regionId ?? ''}
+            onChange={onChange(onChangeValue, 'regionId')}
+            data-testid="add-user-region"
+          >
+            <option value="">Select region</option>
+            {regionOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </SelectInput>
+        </Field>
+      ) : null}
       {showTeam ? (
         <Field label="Team" hint="Organisation team">
-          <SelectInput value={values.teamId ?? ''} onChange={onChange(onChangeValue, 'teamId')}>
+          <SelectInput
+            value={values.teamId ?? ''}
+            onChange={onChange(onChangeValue, 'teamId')}
+            data-testid="add-user-team"
+          >
             <option value="">Select team</option>
             {teamOptions.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
@@ -68,15 +147,64 @@ export function UserFormFields({
           </SelectInput>
         </Field>
       ) : null}
-      {showRegion ? (
-        <Field label="Region" hint="Organisation region">
-          <SelectInput value={values.regionId ?? ''} onChange={onChange(onChangeValue, 'regionId')}>
-            <option value="">Select region</option>
-            {regionOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </SelectInput>
-        </Field>
+      {createMode ? (
+        <>
+          <Field
+            label="Organisation Administrator"
+            hint="Company-scoped grant. Not a reporting role."
+          >
+            <YesNoSelect
+              name="organisationAdmin"
+              value={values.organisationAdmin ?? 'no'}
+              onChangeValue={onChangeValue}
+              testId="add-user-org-admin"
+            />
+          </Field>
+          <Field label="Assign licence">
+            <YesNoSelect
+              name="assignLicence"
+              value={noneAvailable ? 'no' : values.assignLicence ?? 'no'}
+              onChangeValue={onChangeValue}
+              disabled={noneAvailable}
+              testId="add-user-assign-licence"
+            />
+          </Field>
+          <Field label="Send invitation">
+            <YesNoSelect
+              name="sendInvitation"
+              value={values.sendInvitation ?? 'yes'}
+              onChangeValue={onChangeValue}
+              testId="add-user-send-invitation"
+            />
+          </Field>
+          {licencePool ? (
+            <div className="span-2" data-testid="add-user-licence-pool">
+              <div className="field-label">Licence pool</div>
+              <p className="muted" style={{ margin: '4px 0 0' }}>
+                Purchased: {formatPoolCount(licencePool.purchased)}
+                <br />
+                Assigned: {licencePool.assigned}
+                <br />
+                Available: {formatPoolCount(licencePool.available)}
+                {availableAfter != null ? (
+                  <>
+                    <br />
+                    Available after creation: {availableAfter}
+                  </>
+                ) : null}
+              </p>
+              {noneAvailable ? (
+                <p className="field-error" data-testid="add-user-no-licences" style={{ marginTop: 8 }}>
+                  No licences are available. Assignment is disabled.
+                  {' '}
+                  {requestLicencesAction ?? (
+                    <Link to={requestLicencesHref}>Add / Request Licences</Link>
+                  )}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </>
       ) : null}
     </div>
   );
