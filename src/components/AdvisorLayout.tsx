@@ -208,7 +208,7 @@ export default function AdvisorLayout({ chrome }: { chrome?: ReactNode }) {
           <MoreMenu open={moreOpen} onClose={() => setMoreOpen(false)} />
         </div>
       </nav>
-      <AssistantShell environment="production" />
+      <AssistantShell environment="demo" />
     </div>
   );
 }

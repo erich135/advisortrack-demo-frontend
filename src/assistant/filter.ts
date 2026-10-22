@@ -99,8 +99,29 @@ export function suggestionLabel(card: FrontendKnowledgeCard): string {
 }
 
 export function liveQuestionsForRoute(routeId: string | null): string[] {
+  if (routeId === 'advisor-home') {
+    return [
+      'How am I doing this month?',
+      'What needs my attention?',
+      'How far am I from my target?',
+      'Do I have anything overdue?',
+    ];
+  }
+  if (routeId === 'advisor-contacts' || routeId === 'advisor-contact-detail') {
+    return [
+      'How many prospects do I have?',
+      'What is POPIA consent?',
+      'Why can I only have 3 real contacts?',
+      'I added this guy, what now?',
+    ];
+  }
   if (routeId === 'advisor-activities' || routeId === 'advisor-activity-detail') {
-    return ['What follow-ups do I have today?', 'Do I have anything overdue?'];
+    return [
+      'What follow-ups do I have today?',
+      'What calls do I have today?',
+      'Do I have anything overdue?',
+      'I finished this meeting, what now?',
+    ];
   }
   if (routeId === 'advisor-pipeline') {
     return [
@@ -109,14 +130,15 @@ export function liveQuestionsForRoute(routeId: string | null): string[] {
       'What is FICA?',
       'How do I submit to Production?',
       'Which stage has most of my cases?',
+      'What needs my attention?',
     ];
   }
   if (routeId === 'advisor-case-detail') {
     return [
       'What do I do next?',
-      'What is FICA?',
+      'Why can\'t I submit this?',
+      'Do I have to finish FICA first?',
       'How do I submit this case to Production?',
-      'How do I schedule a review?',
     ];
   }
   if (routeId === 'advisor-production') {

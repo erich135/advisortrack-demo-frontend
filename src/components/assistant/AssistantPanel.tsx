@@ -61,6 +61,25 @@ export default function AssistantPanel({ environment, onClose }: AssistantPanelP
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
   const [asking, setAsking] = useState(false);
   const context = useAssistantContext(environment, bundle?.routes);
+  const workspaceRef = useRef(context.workspace);
+
+  useEffect(() => {
+    if (workspaceRef.current === context.workspace) return;
+    workspaceRef.current = context.workspace;
+    setTranscript([]);
+    setView('home');
+    setTopic(null);
+  }, [context.workspace]);
+
+  useEffect(() => {
+    const onReset = () => {
+      setTranscript([]);
+      setView('home');
+      setTopic(null);
+    };
+    window.addEventListener('advisortrack:demo-reset', onReset);
+    return () => window.removeEventListener('advisortrack:demo-reset', onReset);
+  }, []);
 
   function pinTranscriptToLatest() {
     shouldAutoScrollRef.current = true;
@@ -163,6 +182,7 @@ export default function AssistantPanel({ environment, onClose }: AssistantPanelP
     const knowledge = bundle;
     const allowed = visibleCards;
     const assistantContext = context;
+    const previousUser = [...transcript].reverse().find((item) => item.role === 'user');
     setTranscript((current) => [...current, { id: nextId(), role: 'user', text: spoken }]);
     setView('home');
     setTopic(null);
@@ -175,6 +195,7 @@ export default function AssistantPanel({ environment, onClose }: AssistantPanelP
           question: spoken,
           pathname: location.pathname,
           search: location.search,
+          previousQuestion: previousUser?.text,
         });
       } catch {
         answer = answerFromQuestion(knowledge, allowed, spoken, assistantContext);

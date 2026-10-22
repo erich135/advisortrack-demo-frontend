@@ -5,6 +5,7 @@ export type AssistantAskRequest = {
   question: string;
   pathname?: string;
   search?: string;
+  previousQuestion?: string;
 };
 
 /**
@@ -19,6 +20,7 @@ export async function askAdvisorTrackAssistant(input: AssistantAskRequest): Prom
       question: input.question,
       pathname: input.pathname,
       search: input.search,
+      previousQuestion: input.previousQuestion,
     },
   });
 }

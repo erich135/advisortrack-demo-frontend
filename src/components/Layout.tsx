@@ -324,6 +324,7 @@ export default function Layout({ children }: { children?: ReactNode }) {
             setResetting(true);
             void resetDemoWorkspace()
               .then(() => {
+                window.dispatchEvent(new Event('advisortrack:demo-reset'));
                 setResetOpen(false);
               })
               .finally(() => {
