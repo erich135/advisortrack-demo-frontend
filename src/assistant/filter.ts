@@ -128,6 +128,44 @@ export function liveQuestionsForRoute(routeId: string | null): string[] {
       'Why do my Home and Production totals differ?',
     ];
   }
+  if (routeId === 'advisor-planning') {
+    return [
+      'How far am I from my target?',
+      'How do I change my monthly target?',
+      'How do weekly targets work?',
+      'What are conversion ratios?',
+    ];
+  }
+  if (routeId === 'advisor-profile') {
+    return [
+      'How do I update my profile?',
+      'What are Financial Settings?',
+      'How do I change my advisor type?',
+    ];
+  }
+  if (routeId === 'advisor-settings') {
+    return [
+      'What are General Settings?',
+      'What are conversion ratios?',
+      'How do conversion ratios affect my planning?',
+    ];
+  }
+  if (routeId === 'advisor-subscription') {
+    return [
+      'What plan am I on?',
+      'What is Live Preview?',
+      'Why is this feature locked?',
+      'How do I upgrade?',
+    ];
+  }
+  if (routeId === 'advisor-setup') {
+    return [
+      'Why do I need to complete Setup?',
+      'What does monthly nett goal mean?',
+      'What is commission split?',
+      'What are conversion ratios?',
+    ];
+  }
   return [];
 }
 

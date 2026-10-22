@@ -2,13 +2,18 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import Layout from './components/Layout';
 import AdvisorLayout from './components/AdvisorLayout';
-import { AdvisorComingSoonPage } from './pages/advisor/AdvisorComingSoonPage';
 import AdvisorCasePage from './pages/advisor/AdvisorCasePage';
 import AdvisorPipelinePage from './pages/advisor/AdvisorPipelinePage';
 import AdvisorActivitiesPage from './pages/advisor/AdvisorActivitiesPage';
 import AdvisorContactsPage from './pages/advisor/AdvisorContactsPage';
 import AdvisorHomePage from './pages/advisor/AdvisorHomePage';
+import AdvisorPlanningPage from './pages/advisor/AdvisorPlanningPage';
 import AdvisorProductionPage from './pages/advisor/AdvisorProductionPage';
+import AdvisorProfilePage from './pages/advisor/AdvisorProfilePage';
+import AdvisorSettingsPage from './pages/advisor/AdvisorSettingsPage';
+import AdvisorSetupGate from './pages/advisor/AdvisorSetupGate';
+import AdvisorSetupPage from './pages/advisor/AdvisorSetupPage';
+import AdvisorSubscriptionPage from './pages/advisor/AdvisorSubscriptionPage';
 import DashboardPage from './pages/DashboardPage';
 import AdvisorsPage from './pages/AdvisorsPage';
 import AdvisorDetailPage from './pages/AdvisorDetailPage';
@@ -150,29 +155,6 @@ function PostLoginRedirect() {
   return null;
 }
 
-const ADVISOR_COMING_SOON: Record<string, { title: string; description: string }> = {
-  '/advisor/planning': {
-    title: 'Planning & Targets',
-    description: 'Planning values for your book will open here in the next phase.',
-  },
-  '/advisor/profile': {
-    title: 'Profile',
-    description: 'Your advisor profile will open here in the next phase.',
-  },
-  '/advisor/settings': {
-    title: 'General Settings',
-    description: 'Your general settings will open here in the next phase.',
-  },
-  '/advisor/subscription': {
-    title: 'Subscription / Plan',
-    description: 'Your plan details will open here in the next phase.',
-  },
-  '/advisor/setup': {
-    title: 'Setup',
-    description: 'Advisor setup will open here in the next phase.',
-  },
-};
-
 export default function App() {
   return (
     <>
@@ -181,7 +163,9 @@ export default function App() {
         <Route
           element={
             <RequireAdvisorWorkspace>
-              <AdvisorLayout />
+              <AdvisorSetupGate>
+                <AdvisorLayout />
+              </AdvisorSetupGate>
             </RequireAdvisorWorkspace>
           }
         >
@@ -193,11 +177,11 @@ export default function App() {
           <Route path="/advisor/activities/:activityId" element={<AdvisorActivitiesPage />} />
           <Route path="/advisor/pipeline" element={<AdvisorPipelinePage />} />
           <Route path="/advisor/production" element={<AdvisorProductionPage />} />
-          <Route path="/advisor/planning" element={<AdvisorComingSoonPage {...ADVISOR_COMING_SOON['/advisor/planning']} />} />
-          <Route path="/advisor/profile" element={<AdvisorComingSoonPage {...ADVISOR_COMING_SOON['/advisor/profile']} />} />
-          <Route path="/advisor/settings" element={<AdvisorComingSoonPage {...ADVISOR_COMING_SOON['/advisor/settings']} />} />
-          <Route path="/advisor/subscription" element={<AdvisorComingSoonPage {...ADVISOR_COMING_SOON['/advisor/subscription']} />} />
-          <Route path="/advisor/setup" element={<AdvisorComingSoonPage {...ADVISOR_COMING_SOON['/advisor/setup']} />} />
+          <Route path="/advisor/planning" element={<AdvisorPlanningPage />} />
+          <Route path="/advisor/profile" element={<AdvisorProfilePage />} />
+          <Route path="/advisor/settings" element={<AdvisorSettingsPage />} />
+          <Route path="/advisor/subscription" element={<AdvisorSubscriptionPage />} />
+          <Route path="/advisor/setup" element={<AdvisorSetupPage />} />
         </Route>
         <Route element={<Layout />}>
         <Route path="/" element={<DashboardPage />} />

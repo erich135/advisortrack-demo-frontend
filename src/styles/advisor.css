@@ -1146,5 +1146,136 @@
   }
 }
 
+.advisor-config {
+  display: grid;
+  gap: 16px;
+}
+
+.advisor-config-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.advisor-config-hero {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.advisor-config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.advisor-config-list,
+.advisor-config-features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.advisor-config-list li,
+.advisor-config-features li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.advisor-config-error {
+  color: #b42318;
+}
+
+.advisor-config-banner {
+  color: #027a48;
+}
+
+.advisor-config-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.advisor-config-range {
+  width: 100%;
+}
+
+.advisor-config-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.advisor-setup-steps {
+  display: flex;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex-wrap: wrap;
+}
+
+.advisor-setup-steps li {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f2f4f7;
+  font-size: 13px;
+}
+
+.advisor-setup-steps li.is-active {
+  background: #0b3b2e;
+  color: #fff;
+}
+
+.advisor-config-packages {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.advisor-config-packages article {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.advisor-config-packages h4 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 8px;
+}
+
+.advisor-config-packages span {
+  font-size: 12px;
+  background: #eef4ff;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+@media (max-width: 1099px) {
+  .advisor-config-grid,
+  .advisor-config-packages {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 767px) {
-  
+  .advisor-production-month {
+    flex-wrap: wrap;
+  }
+
+  .advisor-production-month strong {
+    width: 100%;
+    text-align: center;
+    order: -1;
+  }
+}

@@ -32,6 +32,7 @@
     "test:advisor-activities": "npx --yes tsx scripts/verify-advisor-activities.ts",
     "test:advisor-pipeline": "npx --yes tsx scripts/verify-advisor-pipeline.ts",
     "test:advisor-production": "npx --yes tsx scripts/verify-advisor-production.ts",
+    "test:advisor-planning": "npx --yes tsx scripts/verify-advisor-planning.ts",
     "test:assistant-ui": "npx --yes tsx scripts/verify-assistant-ui.ts",
     "test:assistant-context": "npx --yes tsx scripts/verify-assistant-context.ts",
     "test:assistant-retrieve": "npx --yes tsx scripts/verify-assistant-retrieve.ts",

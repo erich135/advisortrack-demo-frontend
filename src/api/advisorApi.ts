@@ -79,11 +79,137 @@ export async function getAdvisorDashboard(): Promise<AdvisorDashboardSummary> {
   return apiRequest<AdvisorDashboardSummary>('/dashboard');
 }
 
-export async function getAdvisorPlanningTargets(): Promise<{
-  weeklyPointTarget?: number;
-  weekly?: unknown;
-}> {
-  return apiRequest('/planning/targets');
+export type AdvisorPlanningWeekly = {
+  casesIssuedPerMonth: number;
+  casesIssuedPerWeek: number;
+  casesSubmittedPerWeek: number;
+  recommendationsPerWeek: number;
+  quotesPerWeek: number;
+  interviewsPerWeek: number;
+  coldCallsPerWeek: number;
+};
+
+export type AdvisorPlanningTargets = {
+  weekly: AdvisorPlanningWeekly;
+  weeklyPointTarget: number;
+};
+
+export async function getAdvisorPlanningTargets(): Promise<AdvisorPlanningTargets> {
+  return apiRequest<AdvisorPlanningTargets>('/planning/targets');
+}
+
+export type AdvisorPlanningSettings = {
+  avgCommissionOverride: boolean;
+  avgCommissionAmount: number;
+  taxDirectiveOverride: boolean;
+  taxRatePercent: number;
+  coldCallToInterviewOverride: boolean;
+  coldCallToInterviewRatio: number;
+  interviewToAnalysisOverride: boolean;
+  interviewToAnalysisRatio: number;
+  analysisToRecommendationOverride: boolean;
+  analysisToRecommendationRatio: number;
+  recommendationToImplementationOverride: boolean;
+  recommendationToImplementationRatio: number;
+  submissionToIssuedOverride: boolean;
+  submissionToIssuedRatio: number;
+  adaptiveRatiosEnabled: boolean;
+};
+
+export type AdvisorPlanningSettingsPatch = Partial<AdvisorPlanningSettings>;
+
+export async function getAdvisorPlanningSettings(): Promise<AdvisorPlanningSettings> {
+  return apiRequest<AdvisorPlanningSettings>('/planning/settings');
+}
+
+export async function updateAdvisorPlanningSettings(
+  input: AdvisorPlanningSettingsPatch,
+): Promise<AdvisorPlanningSettings> {
+  return apiRequest<AdvisorPlanningSettings>('/planning/settings', { method: 'PATCH', body: input });
+}
+
+export type AdvisorFinancialProfile = {
+  userId: string;
+  monthlyGoalNett?: number;
+  monthlyDeductions?: number;
+  commissionSplit?: string;
+  commissionSplitNotes?: string;
+  commissionAdvisorType?: string;
+  workingWeeksPerYear?: number;
+  workingDaysPerWeek?: number;
+  vatRegistered?: boolean;
+  vatRatePercent?: number;
+  setupCompletedAt?: string;
+  needsSetup: boolean;
+};
+
+export type AdvisorUserProfile = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  company?: string;
+  role?: string;
+  fspNumber?: string;
+};
+
+export type AdvisorProfile = {
+  user: AdvisorUserProfile;
+  financial: AdvisorFinancialProfile;
+};
+
+export async function getAdvisorProfile(): Promise<AdvisorProfile> {
+  return apiRequest<AdvisorProfile>('/profile');
+}
+
+export async function updateAdvisorProfile(input: {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string | null;
+  fspNumber?: string | null;
+  monthlyGoalNett?: number | null;
+  monthlyDeductions?: number | null;
+  commissionSplit?: string | null;
+  commissionAdvisorType?: 'employee' | 'independent' | null;
+  vatRegistered?: boolean;
+  vatRatePercent?: number | null;
+}): Promise<AdvisorProfile> {
+  return apiRequest<AdvisorProfile>('/profile', { method: 'PATCH', body: input });
+}
+
+export async function updateAdvisorFinancial(input: {
+  monthlyGoalNett?: number;
+  monthlyDeductions?: number | null;
+  commissionSplit?: string | null;
+  workingWeeksPerYear?: number;
+  workingDaysPerWeek?: number;
+}): Promise<AdvisorFinancialProfile> {
+  return apiRequest<AdvisorFinancialProfile>('/profile/financial', { method: 'PATCH', body: input });
+}
+
+export type AdvisorSetupInput = {
+  monthlyGoalNett: number;
+  monthlyDeductions?: number | null;
+  commissionSplit?: string | null;
+  commissionAdvisorType?: 'employee' | 'independent';
+  workingWeeksPerYear?: number;
+  workingDaysPerWeek?: number;
+  generalSettings: {
+    avgCommissionAmount: number;
+    coldCallToInterviewRatio: number;
+    interviewToAnalysisRatio: number;
+    analysisToRecommendationRatio: number;
+    recommendationToImplementationRatio: number;
+    submissionToIssuedRatio: number;
+  };
+  termsAccepted: true;
+  termsVersion?: string;
+};
+
+export async function completeAdvisorSetup(input: AdvisorSetupInput): Promise<AdvisorFinancialProfile> {
+  return apiRequest<AdvisorFinancialProfile>('/profile/setup/complete', { method: 'POST', body: input });
 }
 
 export type AdvisorContactStatus = 'prospect' | 'active' | 'inactive' | 'client';
@@ -345,8 +471,31 @@ export type AdvisorSubscriptionMe = {
   slug?: string;
   packageName?: string;
   packageSlug?: string;
+  status?: 'active' | 'trialing' | 'expired' | 'cancelled' | 'grace';
+  features?: string[];
+  currentPeriodEnd?: string;
+  isTrialing?: boolean;
   entitlements?: AdvisorEntitlements;
 };
+
+export type AdvisorSubscriptionPackage = {
+  id: string;
+  slug: string;
+  name: string;
+  tagline?: string;
+  description?: string;
+  priceCents: number;
+  currency: string;
+  billingInterval?: string;
+  trialDays: number;
+  isHighlighted: boolean;
+  badgeLabel?: string;
+  features: string[];
+};
+
+export async function listAdvisorSubscriptionPackages(): Promise<AdvisorSubscriptionPackage[]> {
+  return apiRequest<AdvisorSubscriptionPackage[]>('/subscription/packages');
+}
 
 export type AdvisorPopiaAuditEntry = {
   id: string;
