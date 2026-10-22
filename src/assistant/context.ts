@@ -3,11 +3,13 @@
  * Identity/role/permissions come from the authenticated session.
  * Navigation may supply pathname/search only.
  */
+import { isAdvisorWorkspacePath, workspaceFromPath, type WorkspaceId } from '../lib/workspace';
 import type { FrontendKnowledgeRoute } from './types';
 
 export type AssistantEnvironment = 'production' | 'demo';
 export type ReportingRole = 'executive' | 'regional_manager' | 'team_leader' | 'financial_advisor';
 export type AssistantScopeKind = 'company' | 'region' | 'team' | 'self' | 'platform';
+export type AssistantWorkspace = WorkspaceId;
 
 /** Client-provided navigation. Security-sensitive fields here are ignored. */
 export type AssistantNavigation = {
@@ -48,6 +50,7 @@ export type AssistantLicencePool = {
 
 export type AssistantContext = {
   environment: AssistantEnvironment;
+  workspace: AssistantWorkspace;
   identity: {
     userId: string;
     companyId: string | null;
@@ -153,8 +156,13 @@ export function reportingRoleOf(
   return null;
 }
 
-export function advisorUsesMobileAppOf(identity: TrustedAssistantIdentity): boolean {
-  return reportingRoleOf(identity.reportingRank) === 'financial_advisor';
+export function advisorUsesMobileAppOf(
+  identity: TrustedAssistantIdentity,
+  pathname?: string,
+): boolean {
+  if (reportingRoleOf(identity.reportingRank) !== 'financial_advisor') return false;
+  if (pathname && isAdvisorWorkspacePath(pathname)) return false;
+  return true;
 }
 
 export function hasLeadershipPortalAccessOf(
@@ -199,8 +207,10 @@ export function buildAssistantContext(input: {
 }): AssistantContext {
   const { environment, identity, navigation, capabilities } = input;
   const isStaff = environment === 'production' && identity.isPlatformStaff;
+  const pathname = navigation.pathname || '/';
   return {
     environment,
+    workspace: workspaceFromPath(pathname, environment),
     identity: {
       userId: identity.userId,
       companyId: identity.companyId,
@@ -210,7 +220,7 @@ export function buildAssistantContext(input: {
       reportingRole: reportingRoleOf(identity.reportingRank),
       isOrganisationAdmin: identity.isOrganisationAdmin,
       isPlatformStaff: isStaff,
-      advisorUsesMobileApp: advisorUsesMobileAppOf(identity),
+      advisorUsesMobileApp: advisorUsesMobileAppOf(identity, pathname),
       hasAnyPortalAccess: hasAnyPortalAccessOf(identity, environment),
       hasLeadershipPortalAccess: hasLeadershipPortalAccessOf(identity, environment),
       scopeKind: scopeKindOf({ ...identity, isPlatformStaff: isStaff }),

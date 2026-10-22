@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { useState, type ReactNode } from 'react';
 import {
   LayoutDashboard,
@@ -30,11 +30,13 @@ import { isPublicDemo } from '../lib/publicDemo';
 import { memberDisplayEmail } from '../lib/displayEmail';
 import type { DemoPublicRole } from '../api/demoApi';
 import { AssistantShell } from './assistant/AssistantShell';
+import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
 const PUBLIC_DEMO_ROLES: { id: DemoPublicRole; label: string }[] = [
   { id: 'executive', label: 'Executive' },
   { id: 'regional_manager', label: 'Regional Manager' },
   { id: 'team_leader', label: 'Team Leader' },
+  { id: 'financial_advisor', label: 'Financial Advisor' },
 ];
 
 function NavIcon({ item }: { item: PortalNavItem }) {
@@ -133,8 +135,10 @@ const founderOverview: PortalNavItem[] = [
   { to: '/production', label: 'Production' },
 ];
 
-export default function Layout({ children }: { children: ReactNode }) {
+export default function Layout({ children }: { children?: ReactNode }) {
   const { pathname, search } = useLocation();
+  const outlet = useOutlet();
+  const content = children ?? outlet;
   const navigate = useNavigate();
   const { signOut, session, switchDemoPersona, resetDemoWorkspace } = useAuth();
   const { selectedDemoUser, resetDemoUser } = useDemoSession();
@@ -162,7 +166,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           : titles[matchKey] ?? titles['/not-found'];
 
   if (isDemoRoute && !selectedDemoUser) {
-    return <>{children}</>;
+    return <>{content}</>;
   }
 
   const me = users[0];
@@ -259,6 +263,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           </div>
           <div className="sub">· {header.sub}</div>
           <div className="spacer" />
+          {isDemoRoute ? null : <WorkspaceSwitcher environment="demo" />}
           {isDemoRoute ? null : <CompanyContextMark name={companyName} plan={ENTERPRISE_PLAN_NAME} />}
           {isPublicDemo ? (
             <div className="demo-top-controls">
@@ -302,7 +307,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           ) : null}
         </header>
         <div className="page" style={isDemoRoute ? { maxWidth: 'none' } : undefined}>
-          {children}
+          {content}
         </div>
       </div>
       {isPublicDemo ? (

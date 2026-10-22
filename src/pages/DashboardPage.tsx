@@ -148,10 +148,10 @@ export default function DashboardPage() {
     const companyName = sessionCompanyName(session);
     return (
       <div className="card">
-        <EmptyState title="Use the AdvisorTrack app">
+        <EmptyState title="This is the Management Dashboard">
           {companyName
-            ? `You are signed in to ${companyName}. Financial Advisors work in the Android app. This management portal is for Executives, Regional Managers, and Team Leaders.`
-            : 'Financial Advisors work in the Android app. This management portal is for Executives, Regional Managers, and Team Leaders.'}
+            ? `You are signed in to ${companyName}. Financial Advisors use Advisor Workspace for their own book. This dashboard is for Executives, Regional Managers, and Team Leaders.`
+            : 'Financial Advisors use Advisor Workspace for their own book. This dashboard is for Executives, Regional Managers, and Team Leaders.'}
         </EmptyState>
       </div>
     );

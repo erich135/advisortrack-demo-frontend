@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Lock, Eye, EyeOff, Mail } from 'lucide-react';
 import { BrandLogo } from '../components/BrandLogo';
 import { Button, Field } from '../components/ui';
+import ForgotPasswordPage from './ForgotPasswordPage';
 
 type LoginPageProps = {
   onLogin: (email: string, password: string) => Promise<{ ok: true } | { ok: false; error: string }>;
@@ -14,8 +15,13 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [shaking, setShaking] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [forgot, setForgot] = useState(false);
 
   const canSubmit = email.trim().length > 0 && password.length > 0 && !submitting;
+
+  if (forgot) {
+    return <ForgotPasswordPage onBack={() => setForgot(false)} />;
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -103,6 +109,14 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             >
               {submitting ? 'Signing in…' : 'Sign in'}
             </Button>
+            <button
+              type="button"
+              className="advisor-home-link"
+              data-testid="forgot-password-link"
+              onClick={() => setForgot(true)}
+            >
+              Forgot password?
+            </button>
           </form>
         </div>
 

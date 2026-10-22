@@ -1,4 +1,4 @@
-import { Building2, MapPinned, Users } from 'lucide-react';
+import { Building2, MapPinned, Smartphone, Users } from 'lucide-react';
 import { BrandLogo } from '../components/BrandLogo';
 import type { DemoPublicRole } from '../api/demoApi';
 
@@ -26,6 +26,12 @@ const ROLES: {
     description: 'Team and Advisor visibility.',
     icon: Users,
   },
+  {
+    id: 'financial_advisor',
+    title: 'Financial Advisor',
+    description: 'Advisor Workspace for one Northstar advisor’s own book.',
+    icon: Smartphone,
+  },
 ];
 
 type DemoEntryPageProps = {
@@ -46,8 +52,8 @@ export default function DemoEntryPage({ onSelectRole, submittingRole, error }: D
 
         <div className="demo-entry-intro">
           <p className="demo-entry-kicker">AdvisorTrack Demo</p>
-          <h1>Choose a management perspective</h1>
-          <p>Explore the Management Portal as one of three leadership roles. You can switch later without leaving this organisation.</p>
+          <h1>Choose a demo perspective</h1>
+          <p>Explore AdvisorTrack as leadership in the Management Portal, or as a Financial Advisor in Advisor Workspace. You can switch later without leaving this organisation.</p>
         </div>
 
         {error ? <div className="auth-error demo-entry-error">{error}</div> : null}

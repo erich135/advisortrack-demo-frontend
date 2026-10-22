@@ -37,6 +37,26 @@ export async function getMe(): Promise<AuthUser> {
   return apiRequest<AuthUser>('/auth/me');
 }
 
+export async function forgotPassword(email: string): Promise<{ message: string }> {
+  return apiRequest<{ message: string }>('/auth/forgot-password', {
+    method: 'POST',
+    auth: false,
+    body: { email },
+  });
+}
+
+export async function resetPassword(input: {
+  email: string;
+  code: string;
+  password: string;
+}): Promise<{ message: string }> {
+  return apiRequest<{ message: string }>('/auth/reset-password', {
+    method: 'POST',
+    auth: false,
+    body: input,
+  });
+}
+
 export async function activateInvitation(token: string, password: string): Promise<{ email: string; message?: string }> {
   return apiRequest('/auth/activate-invitation', {
     method: 'POST',

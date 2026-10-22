@@ -10,6 +10,7 @@ import { useAuth } from './lib/useAuth';
 import { isPublicDemo } from './lib/publicDemo';
 import type { DemoPublicRole } from './api/demoApi';
 import './styles/global.css';
+import './styles/advisor.css';
 
 function Root() {
   const { status, authed, login, enterDemoRole } = useAuth();

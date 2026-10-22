@@ -97,3 +97,38 @@ export function visibleHomeTopics(
 export function suggestionLabel(card: FrontendKnowledgeCard): string {
   return card.questionForms[0] || card.title;
 }
+
+export function liveQuestionsForRoute(routeId: string | null): string[] {
+  if (routeId === 'advisor-activities' || routeId === 'advisor-activity-detail') {
+    return ['What follow-ups do I have today?', 'Do I have anything overdue?'];
+  }
+  if (routeId === 'advisor-pipeline') {
+    return [
+      'How many open cases do I have?',
+      'What are the six stages?',
+      'What is FICA?',
+      'How do I submit to Production?',
+      'Which stage has most of my cases?',
+    ];
+  }
+  if (routeId === 'advisor-case-detail') {
+    return [
+      'What do I do next?',
+      'What is FICA?',
+      'How do I submit this case to Production?',
+      'How do I schedule a review?',
+    ];
+  }
+  return [];
+}
+
+export function cardsForCurrentRoute(
+  cards: FrontendKnowledgeCard[],
+  routeId: string | null,
+): FrontendKnowledgeCard[] {
+  if (!routeId) return [];
+  const matched = cards.filter((card) => card.kind !== 'blocked' && card.routes.includes(routeId));
+  const exclusive = matched.filter((card) => card.routes.length === 1);
+  const shared = matched.filter((card) => card.routes.length !== 1);
+  return [...exclusive, ...shared].slice(0, 5);
+}

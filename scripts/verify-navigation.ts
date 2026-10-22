@@ -137,13 +137,10 @@ assert.equal(tlItems.includes('Regions & Teams'), false);
 assert.equal(tlItems.includes('Subscription'), false);
 assert.equal(tlItems.includes('Company Details'), false);
 
-assert.deepEqual(
-  orgAdminNav.find((section) => section.id === 'overview')?.items.map((item) => item.to),
-  ['/'],
-);
+assert.equal(orgAdminNav.find((section) => section.id === 'overview'), undefined);
 assert.equal(itemLabels(orgAdminNav).includes('Team Pipeline'), false);
 assert.equal(itemLabels(orgAdminNav).includes('Performance'), false);
-assert.deepEqual(itemLabels(faNav), ['Dashboard']);
+assert.deepEqual(itemLabels(faNav), []);
 
 assert.equal(navItemIsActive({ to: '/', label: 'Dashboard' }, '/', ''), true);
 assert.equal(

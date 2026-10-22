@@ -9,9 +9,11 @@ import {
   isCustomerExecutive,
   isOrganisationAdmin,
 } from '../lib/portalAccess';
+import { canUseAdvisorWorkspace } from '../lib/workspace';
 import type { AssistantEnvironment } from './context';
 
 const CAPABILITY_KEYS = [
+  'canViewAdvisorWorkspace',
   'canViewDashboard',
   'canViewUsers',
   'canManageMembers',
@@ -67,6 +69,7 @@ export function capabilitiesFromSession(
   const manageMembers = canBulkImportMembers(session);
   const leadership = hasLeadershipPortalAccess(session);
 
+  capabilities.canViewAdvisorWorkspace = canUseAdvisorWorkspace(session);
   capabilities.canViewDashboard = canViewDashboard(session);
   capabilities.canViewUsers = hasOrganisationAdminAccess(session);
   capabilities.canManageMembers = manageMembers;

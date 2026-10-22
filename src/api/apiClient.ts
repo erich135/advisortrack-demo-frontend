@@ -85,6 +85,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const { method = 'GET', body, auth = true, signal } = options;
   const headers: Record<string, string> = {
     Accept: 'application/json',
+    'X-AdvisorTrack-Client': 'web',
   };
 
   if (body !== undefined) {
@@ -148,7 +149,10 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 
 /** Authenticated binary download for invoice PDFs (not a JSON envelope). */
 export async function apiDownload(path: string): Promise<{ blob: Blob; filename: string }> {
-  const headers: Record<string, string> = { Accept: 'application/pdf' };
+  const headers: Record<string, string> = {
+    Accept: 'application/pdf',
+    'X-AdvisorTrack-Client': 'web',
+  };
   const token = getStoredToken();
   if (!token) {
     throw new ApiError(401, 'You are not signed in.', 'UNAUTHORIZED');

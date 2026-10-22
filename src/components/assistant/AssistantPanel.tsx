@@ -12,8 +12,10 @@ import { ArrowLeft, Send, X } from 'lucide-react';
 import { askAdvisorTrackAssistant } from '../../api/assistantApi';
 import { answerFromCard, answerFromQuestion } from '../../assistant/cardToAnswer';
 import {
+  cardsForCurrentRoute,
   cardsForTopic,
   filterCardsForContext,
+  liveQuestionsForRoute,
   suggestionLabel,
   visibleHomeTopics,
 } from '../../assistant/filter';
@@ -125,6 +127,14 @@ export default function AssistantPanel({ environment, onClose }: AssistantPanelP
   const topicCards = useMemo(
     () => (topic ? cardsForTopic(visibleCards, topic) : []),
     [topic, visibleCards],
+  );
+  const pageCards = useMemo(
+    () => cardsForCurrentRoute(visibleCards, context.route.routeId),
+    [visibleCards, context.route.routeId],
+  );
+  const liveQuestions = useMemo(
+    () => liveQuestionsForRoute(context.route.routeId),
+    [context.route.routeId],
   );
 
   function pushCard(card: FrontendKnowledgeCard, spoken: string) {
@@ -249,6 +259,35 @@ export default function AssistantPanel({ environment, onClose }: AssistantPanelP
                 <div ref={transcriptEndRef} data-testid="assistant-transcript-end" />
               </div>
             )}
+            {liveQuestions.length > 0 || pageCards.length > 0 ? (
+              <>
+                <h3 className="assistant-section-label">On this page</h3>
+                <div className="assistant-suggestion-list">
+                  {liveQuestions.map((question) => (
+                    <button
+                      key={question}
+                      type="button"
+                      className="assistant-suggestion"
+                      data-testid="assistant-live-question"
+                      onClick={() => submitQuestion(question)}
+                    >
+                      {question}
+                    </button>
+                  ))}
+                  {pageCards.map((card) => (
+                    <button
+                      key={card.id}
+                      type="button"
+                      className="assistant-suggestion"
+                      data-testid={`assistant-page-card-${card.id}`}
+                      onClick={() => pushCard(card, suggestionLabel(card))}
+                    >
+                      {suggestionLabel(card)}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : null}
             <h3 className="assistant-section-label">Popular topics</h3>
             <div className="assistant-topic-list">
               {topics.map((item) => (

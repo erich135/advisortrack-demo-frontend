@@ -185,6 +185,15 @@ assert.equal(tl.capabilities.canViewInvoices, false, 'route does not grant capab
 const fa = contextFor(advisor, 'production', { pathname: '/' });
 assert.equal(fa.role.reportingRole, 'financial_advisor');
 assert.equal(fa.role.advisorUsesMobileApp, true);
+assert.equal(fa.workspace, 'management');
+assert.equal(fa.capabilities.canViewAdvisorWorkspace, true);
+
+const faWorkspace = contextFor(advisor, 'demo', { pathname: '/advisor' });
+assert.equal(faWorkspace.workspace, 'advisor');
+assert.equal(faWorkspace.role.advisorUsesMobileApp, false);
+assert.equal(faWorkspace.role.scopeKind, 'self');
+assert.equal(faWorkspace.route.routeId, 'advisor-home');
+assert.equal(faWorkspace.capabilities.canViewPipeline, false);
 assert.equal(fa.role.hasLeadershipPortalAccess, false);
 assert.equal(fa.role.hasAnyPortalAccess, false);
 assert.equal(fa.role.scopeKind, 'self');

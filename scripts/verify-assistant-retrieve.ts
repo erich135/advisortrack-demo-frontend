@@ -211,7 +211,22 @@ assert.notEqual(execInvoices.answer.intent, 'COMM.INVOICES');
 const panel = fs.readFileSync(path.join(root, 'src/components/assistant/AssistantPanel.tsx'), 'utf8');
 assert.match(panel, /askAdvisorTrackAssistant/);
 assert.match(panel, /answerFromQuestion/);
+assert.match(panel, /cardsForCurrentRoute/);
+assert.match(panel, /On this page/);
 assert.doesNotMatch(panel, /pendingNaturalLanguageAnswer/);
 assert.doesNotMatch(fs.readFileSync(path.join(root, 'src/assistant/retrieve.ts'), 'utf8'), /openai|anthropic|pinecone/i);
+
+const faHome = ask(advisor, isDemoFrontend ? 'demo' : 'production', 'How do I read my dashboard?', '/advisor');
+assert.equal(faHome.answer.intent, 'HOME.DASHBOARD');
+assert.equal(faHome.context.workspace, 'advisor');
+assert.equal(faHome.context.role.advisorUsesMobileApp, false);
+assert.ok(faHome.allowedCards.some((card) => card.id === 'HOME.DASHBOARD'));
+
+const faUnknown = ask(advisor, isDemoFrontend ? 'demo' : 'production', 'how do quantum bananas invoice the moon', '/advisor');
+assert.equal(faUnknown.answer.mode, 'unknown');
+assert.match(faUnknown.answer.body, /dashboard, monthly target, weekly activity, pipeline or upcoming activities/);
+
+const execUnknown = ask(executive, isDemoFrontend ? 'demo' : 'production', 'how do quantum bananas invoice the moon');
+assert.match(execUnknown.answer.body, /I don't guess/);
 
 console.log(`Assistant retrieve checks passed (${kb.cards.length} cards, Option A)`);

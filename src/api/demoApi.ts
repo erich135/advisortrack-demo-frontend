@@ -1,7 +1,7 @@
 import { apiRequest } from './apiClient';
 import type { AuthUser } from './authApi';
 
-export type DemoPublicRole = 'executive' | 'regional_manager' | 'team_leader';
+export type DemoPublicRole = 'executive' | 'regional_manager' | 'team_leader' | 'financial_advisor';
 
 export type DemoSessionInfo = {
   id: string;
