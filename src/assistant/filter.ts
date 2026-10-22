@@ -119,6 +119,15 @@ export function liveQuestionsForRoute(routeId: string | null): string[] {
       'How do I schedule a review?',
     ];
   }
+  if (routeId === 'advisor-production') {
+    return [
+      'How much have I issued this month?',
+      'How many applications are pending underwriting?',
+      'What does Accepted / Issued mean?',
+      'How do I capture production?',
+      'Why do my Home and Production totals differ?',
+    ];
+  }
   return [];
 }
 

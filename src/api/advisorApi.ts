@@ -505,6 +505,106 @@ export async function duplicateAdvisorCase(caseId: string): Promise<AdvisorConta
   });
 }
 
+export type AdvisorApplicationStatus =
+  | 'application_received'
+  | 'quality_assessment'
+  | 'pending_underwriting'
+  | 'awaiting_medicals'
+  | 'pma_pending'
+  | 'awaiting_advisor_info'
+  | 'counter_offer'
+  | 'accepted_issued'
+  | 'postponed'
+  | 'declined'
+  | 'withdrawn';
+
+export type AdvisorProductionType = 'commission' | 'fee' | 'bonus' | 'renewal' | 'other';
+
+export type AdvisorProductionTag =
+  | 'Estate Planning'
+  | 'Life Cover'
+  | 'Disability'
+  | 'Dread Disease'
+  | 'Retirement'
+  | 'Savings'
+  | 'Investments'
+  | 'Short Term'
+  | 'Medical Aid';
+
+export type AdvisorProduction = {
+  id: string;
+  title: string;
+  type: AdvisorProductionType;
+  amount: number;
+  contactId?: string;
+  contactName?: string;
+  productName?: string;
+  date: string;
+  notes?: string;
+  pipelineStage?: string;
+  tags: string[];
+  isIssued: boolean;
+  applicationStatus?: AdvisorApplicationStatus | null;
+  caseId?: string;
+  createdAt: string;
+};
+
+export type AdvisorProductionWrite = {
+  title?: string;
+  type?: AdvisorProductionType;
+  amount: number;
+  contactId?: string;
+  contactName?: string;
+  productName?: string;
+  tags?: AdvisorProductionTag[];
+  isIssued?: boolean;
+  applicationStatus?: AdvisorApplicationStatus;
+  date: string;
+  notes?: string;
+};
+
+export type AdvisorProductionPatch = Partial<Omit<AdvisorProductionWrite, 'amount' | 'date'>> & {
+  amount?: number;
+  date?: string;
+};
+
+export async function listAdvisorProduction(filters?: {
+  month?: string;
+  applicationStatus?: AdvisorApplicationStatus;
+  issued?: boolean;
+}): Promise<AdvisorProduction[]> {
+  const params = new URLSearchParams();
+  if (filters?.month) params.set('month', filters.month);
+  if (filters?.applicationStatus) params.set('applicationStatus', filters.applicationStatus);
+  if (filters?.issued !== undefined) params.set('issued', filters.issued ? 'true' : 'false');
+  const query = params.toString();
+  return apiRequest<AdvisorProduction[]>(`/production${query ? `?${query}` : ''}`);
+}
+
+export async function getAdvisorProduction(entryId: string): Promise<AdvisorProduction> {
+  return apiRequest<AdvisorProduction>(`/production/${encodeURIComponent(entryId)}`);
+}
+
+export async function createAdvisorProduction(input: AdvisorProductionWrite): Promise<AdvisorProduction> {
+  return apiRequest<AdvisorProduction>('/production', { method: 'POST', body: input });
+}
+
+export async function updateAdvisorProduction(
+  entryId: string,
+  input: AdvisorProductionPatch,
+): Promise<AdvisorProduction> {
+  return apiRequest<AdvisorProduction>(`/production/${encodeURIComponent(entryId)}`, {
+    method: 'PATCH',
+    body: input,
+  });
+}
+
+export async function deleteAdvisorProduction(entryId: string): Promise<{ deleted: boolean }> {
+  return apiRequest<{ deleted: boolean }>(`/production/${encodeURIComponent(entryId)}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function getAdvisorSubscriptionMe(): Promise<AdvisorSubscriptionMe> {
   return apiRequest<AdvisorSubscriptionMe>('/subscription/me');
 }

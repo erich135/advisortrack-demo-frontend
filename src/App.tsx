@@ -8,6 +8,7 @@ import AdvisorPipelinePage from './pages/advisor/AdvisorPipelinePage';
 import AdvisorActivitiesPage from './pages/advisor/AdvisorActivitiesPage';
 import AdvisorContactsPage from './pages/advisor/AdvisorContactsPage';
 import AdvisorHomePage from './pages/advisor/AdvisorHomePage';
+import AdvisorProductionPage from './pages/advisor/AdvisorProductionPage';
 import DashboardPage from './pages/DashboardPage';
 import AdvisorsPage from './pages/AdvisorsPage';
 import AdvisorDetailPage from './pages/AdvisorDetailPage';
@@ -150,10 +151,6 @@ function PostLoginRedirect() {
 }
 
 const ADVISOR_COMING_SOON: Record<string, { title: string; description: string }> = {
-  '/advisor/production': {
-    title: 'Production',
-    description: 'Your own production will open here in the next phase. This is not company Production.',
-  },
   '/advisor/planning': {
     title: 'Planning & Targets',
     description: 'Planning values for your book will open here in the next phase.',
@@ -195,7 +192,7 @@ export default function App() {
           <Route path="/advisor/activities" element={<AdvisorActivitiesPage />} />
           <Route path="/advisor/activities/:activityId" element={<AdvisorActivitiesPage />} />
           <Route path="/advisor/pipeline" element={<AdvisorPipelinePage />} />
-          <Route path="/advisor/production" element={<AdvisorComingSoonPage {...ADVISOR_COMING_SOON['/advisor/production']} />} />
+          <Route path="/advisor/production" element={<AdvisorProductionPage />} />
           <Route path="/advisor/planning" element={<AdvisorComingSoonPage {...ADVISOR_COMING_SOON['/advisor/planning']} />} />
           <Route path="/advisor/profile" element={<AdvisorComingSoonPage {...ADVISOR_COMING_SOON['/advisor/profile']} />} />
           <Route path="/advisor/settings" element={<AdvisorComingSoonPage {...ADVISOR_COMING_SOON['/advisor/settings']} />} />
