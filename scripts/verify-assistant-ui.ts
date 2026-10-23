@@ -101,7 +101,13 @@ assert.deepEqual(
     'Commercial',
     'Troubleshooting',
     'Getting Started',
+    'Advisor Workspace',
   ],
+);
+assert.ok(productionTopics.some((topic) => topic.id === 'advisor-workspace'));
+assert.equal(
+  productionTopics.find((topic) => topic.id === 'advisor-workspace')?.routeIds?.includes('advisor-home'),
+  true,
 );
 
 const people = kb.homeTopics.find((topic) => topic.id === 'people-access');

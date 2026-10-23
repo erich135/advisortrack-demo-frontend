@@ -196,9 +196,12 @@ assert.match(api, /web/);
 
 if (isDemoFrontend) {
   const entry = src('src/pages/DemoEntryPage.tsx');
+  const chrome = src('src/components/Layout.tsx');
   assert.match(entry, /financial_advisor/);
-  assert.match(layout, /Viewing as/);
-  assert.match(layout, /Reset Demo/);
+  assert.match(chrome, /Viewing as/);
+  assert.match(chrome, /Reset Demo/);
+  assert.doesNotMatch(layout, /Viewing as/);
+  assert.doesNotMatch(layout, /Reset Demo/);
 } else {
   assert.doesNotMatch(layout, /Viewing as/);
   assert.doesNotMatch(layout, /Reset Demo/);
