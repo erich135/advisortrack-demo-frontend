@@ -62,7 +62,9 @@ assert.ok(labels.includes('What happens if I choose Lost?'));
 assert.ok(labels.includes('How do I reschedule an activity?'));
 assert.deepEqual(liveQuestionsForRoute('advisor-activities'), [
   'What follow-ups do I have today?',
+  'What calls do I have today?',
   'Do I have anything overdue?',
+  'I finished this meeting, what now?',
 ]);
 
 const context = {

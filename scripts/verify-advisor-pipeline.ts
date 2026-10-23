@@ -62,12 +62,13 @@ assert.deepEqual(liveQuestionsForRoute('advisor-pipeline'), [
   'What is FICA?',
   'How do I submit to Production?',
   'Which stage has most of my cases?',
+  'What needs my attention?',
 ]);
 assert.deepEqual(liveQuestionsForRoute('advisor-case-detail'), [
   'What do I do next?',
-  'What is FICA?',
+  'Why can\'t I submit this?',
+  'Do I have to finish FICA first?',
   'How do I submit this case to Production?',
-  'How do I schedule a review?',
 ]);
 
 const labels = cardsForCurrentRoute(
