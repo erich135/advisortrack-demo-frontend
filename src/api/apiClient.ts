@@ -12,6 +12,9 @@ export const API_BASE_URL = (
 if (isDemoBuild && /api\.advisortrack\.co\.za/i.test(API_BASE_URL)) {
   throw new Error('Demo frontend must never call the production backend.');
 }
+if (isDemoBuild && /^https?:\/\//i.test(API_BASE_URL) && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(API_BASE_URL)) {
+  throw new Error('Demo frontend must not call an absolute API URL except localhost for local smoke tests.');
+}
 
 const TOKEN_KEY = 'at_jwt';
 

@@ -136,15 +136,22 @@ const factAnswer = answerFromQuestion(kb, assign.allowedCards, 'How do I assign 
 assert.ok(factAnswer.facts?.some((fact) => fact.label === 'Available' && fact.value === '68'));
 
 const licenceWord = ask(orgAdminExec, 'production', 'licence', '/licences');
-assert.equal(licenceWord.answer.mode, 'disambiguate');
-assert.ok((licenceWord.answer.disambiguation?.length ?? 0) >= 2);
-assert.ok((licenceWord.answer.disambiguation?.length ?? 0) <= 4);
-assert.equal(
-  licenceWord.answer.disambiguation?.every((item) =>
-    licenceWord.allowedCards.some((card) => card.id === item.cardId),
-  ),
-  true,
+assert.ok(
+  licenceWord.answer.mode === 'allowed' || licenceWord.answer.mode === 'disambiguate',
+  'related licence cards compose rather than forcing an article chooser',
 );
+if (licenceWord.answer.mode === 'disambiguate') {
+  assert.ok((licenceWord.answer.disambiguation?.length ?? 0) >= 2);
+  assert.ok((licenceWord.answer.disambiguation?.length ?? 0) <= 4);
+  assert.equal(
+    licenceWord.answer.disambiguation?.every((item) =>
+      licenceWord.allowedCards.some((card) => card.id === item.cardId),
+    ),
+    true,
+  );
+} else {
+  assert.ok((licenceWord.answer.sources?.length ?? 0) >= 1);
+}
 
 const unknown = ask(orgAdminExec, 'production', 'how do quantum bananas invoice the moon');
 assert.equal(unknown.answer.mode, 'unknown');
@@ -225,6 +232,13 @@ assert.ok(faHome.allowedCards.some((card) => card.id === 'HOME.DASHBOARD'));
 const faUnknown = ask(advisor, isDemoFrontend ? 'demo' : 'production', 'how do quantum bananas invoice the moon', '/advisor');
 assert.equal(faUnknown.answer.mode, 'unknown');
 assert.match(faUnknown.answer.body, /dashboard, monthly target, weekly activity, pipeline or upcoming activities/);
+
+const casualHi = ask(advisor, isDemoFrontend ? 'demo' : 'production', 'Hi dex buddy', '/advisor');
+assert.notEqual(casualHi.answer.intent, 'PIPELINE.NO_ADVICE');
+assert.doesNotMatch(`${casualHi.answer.headline} ${casualHi.answer.body}`, /financial adviser/i);
+
+const recommend = ask(advisor, isDemoFrontend ? 'demo' : 'production', 'Can Dex recommend a product?', '/advisor/pipeline');
+assert.equal(recommend.answer.intent, 'PIPELINE.NO_ADVICE');
 
 const execUnknown = ask(executive, isDemoFrontend ? 'demo' : 'production', 'how do quantum bananas invoice the moon');
 assert.match(execUnknown.answer.body, /I don't guess/);

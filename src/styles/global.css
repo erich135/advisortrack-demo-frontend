@@ -1407,20 +1407,33 @@ textarea.input:focus {
 .assistant-panel-head {
   display: flex;
   align-items: flex-start;
+  flex: 0 0 auto;
   gap: 12px;
   padding: 16px 16px 12px;
+  background: var(--color-navy);
+  color: var(--color-white);
   border-bottom: 1px solid var(--border);
 }
 
 .assistant-panel-head h2 {
   font-size: 16px;
   line-height: 1.2;
+  color: var(--color-white);
+  font-weight: 800;
 }
 
 .assistant-panel-head p {
   margin: 2px 0 0;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.72);
   font-size: 13px;
+}
+
+.assistant-panel-head .assistant-icon {
+  box-shadow: 0 0 0 2px var(--brand);
+}
+
+.assistant-panel-head .assistant-icon-button {
+  color: var(--color-white);
 }
 
 .assistant-icon-button,
@@ -1454,10 +1467,10 @@ textarea.input:focus {
 }
 
 .assistant-panel-body {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
-  padding: 16px;
+  overflow-y: auto;
+  padding: 16px 16px 24px;
 }
 .assistant-panel-body::-webkit-scrollbar {
   width: 6px;
@@ -1569,6 +1582,7 @@ textarea.input:focus {
 .assistant-answer-escalation,
 .assistant-answer-sources {
   margin: 0 0 10px;
+  overflow-wrap: anywhere;
 }
 
 .assistant-answer-sources {
@@ -1628,9 +1642,13 @@ textarea.input:focus {
 
 .assistant-composer {
   display: flex;
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 2;
   gap: 8px;
   padding: 12px;
   border-top: 1px solid var(--border);
+  background: var(--color-white);
 }
 
 .assistant-input {
@@ -1666,6 +1684,18 @@ textarea.input:focus {
     width: calc(100vw - 24px);
     height: calc(100vh - 24px);
     border-radius: 12px;
+  }
+  .advisor-shell .assistant-panel,
+  .advisor-shell .assistant-panel-loading {
+    bottom: calc(var(--advisor-bottom-h, 64px) + env(safe-area-inset-bottom, 0px) + 12px);
+    height: calc(100dvh - var(--advisor-bottom-h, 64px) - env(safe-area-inset-bottom, 0px) - 24px);
+  }
+  .assistant-panel-body {
+    padding-bottom: 32px;
+  }
+  .assistant-suggestion-list,
+  .assistant-topic-list {
+    padding-bottom: 12px;
   }
   .assistant-launcher {
     right: 16px;

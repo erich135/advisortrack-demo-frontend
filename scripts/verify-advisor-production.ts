@@ -49,11 +49,11 @@ assert.match(css, /max-width: 1099px/);
 assert.match(management, /function ProductionPage|export default function ProductionPage/);
 
 assert.deepEqual(liveQuestionsForRoute('advisor-production'), [
+  "What's still pending?",
+  "What's holding things up?",
   'How much have I issued this month?',
   'How many applications are pending underwriting?',
-  'What does Accepted / Issued mean?',
   'How do I capture production?',
-  'Why do my Home and Production totals differ?',
 ]);
 
 const labels = cardsForCurrentRoute(

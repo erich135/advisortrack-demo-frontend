@@ -40,10 +40,10 @@ assert.match(src('src/pages/advisor/AdvisorSetupGate.tsx'), /needsSetup/);
 assert.match(src('src/styles/advisor.css'), /advisor-config-card/);
 
 assert.deepEqual(liveQuestionsForRoute('advisor-planning'), [
+  'Am I on target?',
   'How far am I from my target?',
   'How do I change my monthly target?',
   'How do weekly targets work?',
-  'What are conversion ratios?',
 ]);
 assert.deepEqual(liveQuestionsForRoute('advisor-subscription'), [
   'What plan am I on?',

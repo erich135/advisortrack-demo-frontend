@@ -27,6 +27,7 @@ import type {
   FrontendKnowledgeBundle,
   FrontendKnowledgeCard,
 } from '../../assistant/types';
+import { DEX_CTA, DEX_NAME, DEX_TAGLINE } from '../../assistant/dex';
 import { AssistantAnswerView } from './AssistantAnswerView';
 import { AssistantIcon } from './AssistantIcon';
 
@@ -196,6 +197,7 @@ export default function AssistantPanel({ environment, onClose }: AssistantPanelP
           pathname: location.pathname,
           search: location.search,
           previousQuestion: previousUser?.text,
+          viewport: window.matchMedia('(max-width: 767px)').matches ? 'phone' : 'desktop',
         });
       } catch {
         answer = answerFromQuestion(knowledge, allowed, spoken, assistantContext);
@@ -228,13 +230,13 @@ export default function AssistantPanel({ environment, onClose }: AssistantPanelP
       <header className="assistant-panel-head">
         <AssistantIcon size={40} />
         <div>
-          <h2 id="assistant-panel-title">AdvisorTrack Assistant</h2>
-          <p>How can I help?</p>
+          <h2 id="assistant-panel-title">{DEX_NAME}</h2>
+          <p>{DEX_TAGLINE}</p>
         </div>
         <button
           type="button"
           className="assistant-icon-button"
-          aria-label="Close AdvisorTrack Assistant"
+          aria-label={`Close ${DEX_NAME}`}
           data-testid="assistant-close"
           onClick={onClose}
         >
@@ -254,7 +256,7 @@ export default function AssistantPanel({ environment, onClose }: AssistantPanelP
         {view === 'home' ? (
           <>
             {transcript.length === 0 && !asking ? (
-              <p className="assistant-intro">Ask me anything about using AdvisorTrack.</p>
+              <p className="assistant-intro">Ask Dex anything about using AdvisorTrack.</p>
             ) : (
               <div className="assistant-transcript" data-testid="assistant-transcript">
                 {transcript.map((item) =>
@@ -362,13 +364,13 @@ export default function AssistantPanel({ environment, onClose }: AssistantPanelP
 
       <form className="assistant-composer" onSubmit={onSubmit}>
         <label className="sr-only" htmlFor="assistant-input">
-          Ask AdvisorTrack
+          {DEX_CTA}
         </label>
         <input
           id="assistant-input"
           ref={inputRef}
           className="assistant-input"
-          placeholder="Ask AdvisorTrack anything..."
+          placeholder={`${DEX_CTA}...`}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={onInputKeyDown}

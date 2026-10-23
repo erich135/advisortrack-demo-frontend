@@ -6,6 +6,7 @@ export type AssistantAskRequest = {
   pathname?: string;
   search?: string;
   previousQuestion?: string;
+  viewport?: 'desktop' | 'phone' | 'unknown';
 };
 
 /**
@@ -21,6 +22,7 @@ export async function askAdvisorTrackAssistant(input: AssistantAskRequest): Prom
       pathname: input.pathname,
       search: input.search,
       previousQuestion: input.previousQuestion,
+      viewport: input.viewport,
     },
   });
 }

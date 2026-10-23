@@ -57,12 +57,11 @@ assert.match(css, /max-width: 1099px/);
 assert.match(layout, /pathname.startsWith\('\/advisor\/cases\/'\)/);
 
 assert.deepEqual(liveQuestionsForRoute('advisor-pipeline'), [
+  'What needs attention?',
+  'What should I do here?',
   'How many open cases do I have?',
   'What are the six stages?',
-  'What is FICA?',
   'How do I submit to Production?',
-  'Which stage has most of my cases?',
-  'What needs my attention?',
 ]);
 assert.deepEqual(liveQuestionsForRoute('advisor-case-detail'), [
   'What do I do next?',

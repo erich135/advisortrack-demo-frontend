@@ -334,15 +334,31 @@ export function answerFromQuestion(
   if (retrieved.kind === 'match') {
     return { ...answerFromCard(bundle, retrieved.card, context), confidence: retrieved.score };
   }
+  if (retrieved.kind === 'compose') {
+    const cards = retrieved.cards.map((hit) => hit.card);
+    const primary = answerFromCard(bundle, cards[0], context);
+    return {
+      ...primary,
+      answerId: `compose:${cards.map((card) => card.id).join(',')}`,
+      confidence: retrieved.cards[0]?.score ?? primary.confidence,
+      headline: cards[0].title,
+      body: cards.map((card) => card.summary).join(' '),
+      sources: cards.map((card) => ({ cardId: card.id, title: card.title })),
+    };
+  }
   if (retrieved.kind === 'disambiguate') {
+    const labels = retrieved.cards.map(({ card }) => card.questionForms[0] || card.title);
+    const question = labels.length === 2
+      ? `Do you mean ${labels[0]}, or ${labels[1]}?`
+      : 'Which of those did you mean?';
     return {
       answerId: `disambiguate:${retrieved.cards.map((hit) => hit.card.id).join(',')}`,
       intent: 'disambiguate',
       confidence: retrieved.cards[0]?.score ?? 0,
       mode: 'disambiguate',
-      headline: 'Which of these did you mean?',
-      body: 'A few help articles could match your question. Choose one — I will not guess.',
-      clarifyingQuestion: 'Which of these did you mean?',
+      headline: 'I need one more detail',
+      body: question,
+      clarifyingQuestion: question,
       disambiguation: retrieved.cards.map(({ card }) => ({
         cardId: card.id,
         label: card.questionForms[0] || card.title,

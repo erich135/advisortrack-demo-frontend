@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { DEX_CTA } from '../../assistant/dex';
 import { AssistantIcon } from './AssistantIcon';
 
 const AssistantPanel = lazy(() => import('./AssistantPanel'));
@@ -55,8 +56,8 @@ export function AssistantShell({
         ref={launcherRef}
         type="button"
         className={`assistant-launcher${attention ? ' assistant-launcher-attention' : ''}`}
-        aria-label="Ask AdvisorTrack"
-        title="Ask AdvisorTrack"
+        aria-label={DEX_CTA}
+        title={DEX_CTA}
         aria-expanded={open}
         aria-controls="assistant-panel"
         data-testid="assistant-launcher"
@@ -64,7 +65,7 @@ export function AssistantShell({
         onClick={openPanel}
       >
           <AssistantIcon size={60} alt="" />
-        <span className="assistant-launcher-tooltip">Ask AdvisorTrack</span>
+        <span className="assistant-launcher-tooltip">{DEX_CTA}</span>
       </button>
       {loaded ? (
         <Suspense
