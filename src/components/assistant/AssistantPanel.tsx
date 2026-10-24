@@ -19,6 +19,7 @@ import {
   DEX_CLEARED_EVENT,
   clearDexTranscript,
   dexTranscriptStorageKey,
+  notifyDexMemoryChanged,
   readDexTranscript,
   writeDexTranscript,
 } from '../../lib/dexConversationStorage';
@@ -291,6 +292,9 @@ export default function AssistantPanel({ environment, onClose }: AssistantPanelP
         answer = answerFromQuestion(knowledge, allowed, spoken, assistantContext);
       }
       setTranscript((current) => [...current, { id: nextId(), role: 'assistant', answer }]);
+      if (answer.intent.startsWith('conversation.memory.')) {
+        notifyDexMemoryChanged();
+      }
       setAsking(false);
     })();
   }

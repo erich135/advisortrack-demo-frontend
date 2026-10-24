@@ -52,6 +52,12 @@ export function clearDexTranscript(key: string | null): void {
 }
 
 export const DEX_CLEARED_EVENT = 'at-dex-cleared';
+export const DEX_MEMORY_CHANGED_EVENT = 'at-dex-memory-changed';
+
+export function notifyDexMemoryChanged(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(DEX_MEMORY_CHANGED_EVENT));
+}
 
 export function clearAllDexTranscripts(): void {
   if (typeof sessionStorage === 'undefined') return;

@@ -129,6 +129,13 @@ export default function AdvisorSettingsPage() {
               Adaptive ratios enabled
             </label>
           </section>
+          <section className="advisor-config-card" data-testid="dex-memory-demo">
+            <h3>Dex Memory</h3>
+            <p className="advisor-home-muted">
+              In the public demo Dex remembers only this visit. Reset Demo or a new visitor starts
+              fresh. There is no long-term personal memory and nothing is saved to production.
+            </p>
+          </section>
           <Button type="button" variant="primary" disabled={saving} onClick={() => void onSave()}>
             {saving ? 'Saving…' : 'Save settings'}
           </Button>

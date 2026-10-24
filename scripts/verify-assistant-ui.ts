@@ -43,6 +43,8 @@ assert.match(auth, /clearLocalSession\(\);/);
 assert.match(auth, /resetAdvisorTrackAssistantConversation\(\{ token \}\)/);
 assert.doesNotMatch(auth, /await resetAdvisorTrackAssistantConversation\(\)/);
 assert.match(panel, /DEX_CLEARED_EVENT/);
+assert.match(panel, /notifyDexMemoryChanged/);
+assert.match(panel, /conversation\.memory\./);
 assert.match(panel, /DEX_NAME/);
 assert.match(panel, /DEX_TAGLINE/);
 assert.match(panel, /DEX_CTA/);
@@ -198,6 +200,21 @@ if (isDemoFrontend) {
 } else {
   assert.match(layout, /environment="production"/);
   assert.doesNotMatch(layout, /isPublicDemo/);
+}
+
+const settingsPage = src('src/pages/advisor/AdvisorSettingsPage.tsx');
+const assistantApi = src('src/api/assistantApi.ts');
+if (isDemoFrontend) {
+  assert.match(settingsPage, /dex-memory-demo/);
+  assert.match(settingsPage, /remembers only this visit/i);
+  assert.doesNotMatch(settingsPage, /getDexMemoryPreference|DexMemorySettings/);
+  assert.doesNotMatch(assistantApi, /\/assistant\/memory/);
+} else {
+  assert.match(settingsPage, /DexMemorySettings/);
+  assert.match(src('src/pages/advisor/DexMemorySettings.tsx'), /dex-memory-settings/);
+  assert.match(src('src/pages/advisor/DexMemorySettings.tsx'), /Forget all facts/);
+  assert.match(assistantApi, /\/assistant\/memory\/preference/);
+  assert.match(assistantApi, /\/assistant\/memory\/forget-all/);
 }
 
 console.log(
