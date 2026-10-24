@@ -1436,6 +1436,32 @@ textarea.input:focus {
   color: var(--color-white);
 }
 
+.assistant-panel-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.assistant-new-conversation {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.88);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.assistant-new-conversation:hover,
+.assistant-new-conversation:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
 .assistant-icon-button,
 .assistant-send,
 .assistant-back {
@@ -1450,7 +1476,6 @@ textarea.input:focus {
 }
 
 .assistant-icon-button {
-  margin-left: auto;
   width: 32px;
   height: 32px;
 }

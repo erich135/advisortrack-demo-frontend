@@ -10,6 +10,8 @@ import { getMe, login as loginRequest, type AuthUser } from '../api/authApi';
 import { enterDemo, switchDemoRole, resetDemo, type DemoPublicRole } from '../api/demoApi';
 import { getCompanyMe, type CompanyMe } from '../api/companyApi';
 import { getSubscriptionMe, type SubscriptionMe } from '../api/subscriptionApi';
+import { resetAdvisorTrackAssistantConversation } from '../api/assistantApi';
+import { clearAllDexTranscripts } from './dexConversationStorage';
 
 const SESSION_KEY = 'at_session';
 
@@ -25,6 +27,7 @@ export type AuthSession = {
   isOrganisationAdmin: boolean;
   canAccessEngineeringChangelog: boolean;
   hierarchy: CompanyMe['hierarchy'] | null;
+  demoSessionId?: string | null;
 };
 
 type AuthSnapshot = {
@@ -71,9 +74,30 @@ function writeStoredSession(session: AuthSession | null) {
   }
 }
 
+const DEMO_SESSION_ID_KEY = 'at_demo_session_id';
+
+function readStoredDemoSessionId(): string | null {
+  try {
+    return sessionStorage.getItem(DEMO_SESSION_ID_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredDemoSessionId(id: string | null) {
+  try {
+    if (id) sessionStorage.setItem(DEMO_SESSION_ID_KEY, id);
+    else sessionStorage.removeItem(DEMO_SESSION_ID_KEY);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
 function clearLocalSession() {
   clearStoredToken();
   writeStoredSession(null);
+  writeStoredDemoSessionId(null);
+  clearAllDexTranscripts();
   setSnapshot({ status: 'ready', session: null });
 }
 
@@ -81,6 +105,7 @@ function toSession(
   user: AuthUser,
   subscription: SubscriptionMe | null,
   companyMe: CompanyMe | null,
+  demoSessionId?: string | null,
 ): AuthSession {
   return {
     user,
@@ -94,6 +119,7 @@ function toSession(
     isOrganisationAdmin: Boolean(companyMe?.isOrganisationAdmin),
     canAccessEngineeringChangelog: Boolean(companyMe?.canAccessEngineeringChangelog),
     hierarchy: companyMe?.hierarchy ?? null,
+    demoSessionId: demoSessionId ?? readStoredDemoSessionId(),
   };
 }
 
@@ -203,6 +229,7 @@ export function useAuth() {
   const login = useCallback(async (email: string, password: string) => {
     try {
       const result = await loginRequest(email.trim(), password);
+      clearAllDexTranscripts();
       setStoredToken(result.token);
       const next = await loadPostLoginSession(result.user);
       writeStoredSession(next);
@@ -218,15 +245,19 @@ export function useAuth() {
 
   const enterDemoRole = useCallback(async (role: DemoPublicRole) => {
     try {
+      clearAllDexTranscripts();
       const result = await enterDemo(role);
       setStoredToken(result.token);
+      writeStoredDemoSessionId(result.session.id);
       const next = await loadPostLoginSession(result.user);
+      next.demoSessionId = result.session.id;
       writeStoredSession(next);
       setSnapshot({ status: 'ready', session: next });
       return { ok: true as const };
     } catch (error) {
       clearStoredToken();
       writeStoredSession(null);
+      writeStoredDemoSessionId(null);
       setSnapshot({ status: 'ready', session: null });
       return { ok: false as const, error: toAuthErrorMessage(error) };
     }
@@ -235,7 +266,9 @@ export function useAuth() {
   const switchDemoPersona = useCallback(async (role: DemoPublicRole) => {
     const result = await switchDemoRole(role);
     setStoredToken(result.token);
+    writeStoredDemoSessionId(result.session.id);
     const next = await loadPostLoginSession(result.user);
+    next.demoSessionId = result.session.id;
     writeStoredSession(next);
     setSnapshot({ status: 'ready', session: next });
     return { ok: true as const };
@@ -243,15 +276,22 @@ export function useAuth() {
 
   const resetDemoWorkspace = useCallback(async () => {
     const result = await resetDemo();
+    clearAllDexTranscripts();
     setStoredToken(result.token);
+    writeStoredDemoSessionId(result.session.id);
     const next = await loadPostLoginSession(result.user);
+    next.demoSessionId = result.session.id;
     writeStoredSession(next);
     setSnapshot({ status: 'ready', session: next });
     return { ok: true as const };
   }, []);
 
   const signOut = useCallback(() => {
+    const token = getStoredToken();
     clearLocalSession();
+    if (token) {
+      void resetAdvisorTrackAssistantConversation({ token }).catch(() => undefined);
+    }
   }, []);
 
   return {

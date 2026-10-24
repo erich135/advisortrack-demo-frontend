@@ -82,10 +82,12 @@ type RequestOptions = {
   body?: unknown;
   auth?: boolean;
   signal?: AbortSignal;
+  token?: string;
+  skipUnauthorizedHandler?: boolean;
 };
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, auth = true, signal } = options;
+  const { method = 'GET', body, auth = true, signal, token: tokenOverride, skipUnauthorizedHandler } = options;
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'X-AdvisorTrack-Client': 'web',
@@ -96,7 +98,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   if (auth) {
-    const token = getStoredToken();
+    const token = tokenOverride ?? getStoredToken();
     if (!token) {
       throw new ApiError(401, 'You are not signed in.', 'UNAUTHORIZED');
     }
@@ -135,7 +137,11 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     const code = envelope?.error?.code || (response.status === 401 ? 'UNAUTHORIZED' : 'HTTP_ERROR');
     const error = new ApiError(response.status, message, code, envelope?.error?.details);
 
-    if (auth && (response.status === 401 || code === 'UNAUTHORIZED' || code === 'TOKEN_EXPIRED' || code === 'INVALID_TOKEN' || code === 'DEMO_SESSION_EXPIRED' || code === 'DEMO_SESSION_REQUIRED')) {
+    if (
+      auth
+      && !skipUnauthorizedHandler
+      && (response.status === 401 || code === 'UNAUTHORIZED' || code === 'TOKEN_EXPIRED' || code === 'INVALID_TOKEN' || code === 'DEMO_SESSION_EXPIRED' || code === 'DEMO_SESSION_REQUIRED')
+    ) {
       onUnauthorized?.();
     }
 

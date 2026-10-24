@@ -9,7 +9,19 @@ import {
 } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ArrowLeft, Send, X } from 'lucide-react';
-import { askAdvisorTrackAssistant } from '../../api/assistantApi';
+import {
+  askAdvisorTrackAssistant,
+  getAdvisorTrackAssistantConversation,
+  resetAdvisorTrackAssistantConversation,
+} from '../../api/assistantApi';
+import { useAuth } from '../../lib/useAuth';
+import {
+  DEX_CLEARED_EVENT,
+  clearDexTranscript,
+  dexTranscriptStorageKey,
+  readDexTranscript,
+  writeDexTranscript,
+} from '../../lib/dexConversationStorage';
 import { answerFromCard, answerFromQuestion } from '../../assistant/cardToAnswer';
 import {
   cardsForCurrentRoute,
@@ -48,6 +60,18 @@ function nextId(): string {
   return `m${messageSeq}`;
 }
 
+function restoredAnswer(text: string): AssistantAnswer {
+  return {
+    answerId: nextId(),
+    intent: 'conversation.restored',
+    confidence: 1,
+    mode: 'allowed',
+    headline: text.slice(0, 80),
+    body: text,
+    sources: [],
+  };
+}
+
 export default function AssistantPanel({ environment, onClose }: AssistantPanelProps) {
   const location = useLocation();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -61,16 +85,69 @@ export default function AssistantPanel({ environment, onClose }: AssistantPanelP
   const [topic, setTopic] = useState<AssistantHomeTopic | null>(null);
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
   const [asking, setAsking] = useState(false);
+  const { session } = useAuth();
   const context = useAssistantContext(environment, bundle?.routes);
-  const workspaceRef = useRef(context.workspace);
+  const hydratedRef = useRef(false);
+  const demoSessionId = (session as { demoSessionId?: string | null } | null)?.demoSessionId ?? null;
+  const storageKey = dexTranscriptStorageKey({
+    environment,
+    userId: session?.user.id,
+    companyId: session?.company?.id ?? session?.organisation?.id ?? null,
+    demoSessionId,
+  });
 
   useEffect(() => {
-    if (workspaceRef.current === context.workspace) return;
-    workspaceRef.current = context.workspace;
-    setTranscript([]);
-    setView('home');
-    setTopic(null);
-  }, [context.workspace]);
+    function onCleared() {
+      hydratedRef.current = true;
+      setTranscript([]);
+      setView('home');
+      setTopic(null);
+      setDraft('');
+    }
+    window.addEventListener(DEX_CLEARED_EVENT, onCleared);
+    return () => window.removeEventListener(DEX_CLEARED_EVENT, onCleared);
+  }, []);
+
+  useEffect(() => {
+    if (!session) {
+      hydratedRef.current = false;
+      setTranscript([]);
+      setView('home');
+      setTopic(null);
+      return;
+    }
+    hydratedRef.current = false;
+    const local = readDexTranscript(storageKey);
+    if (local?.length) {
+      setTranscript(local as TranscriptItem[]);
+      hydratedRef.current = true;
+      return;
+    }
+    let cancelled = false;
+    void getAdvisorTrackAssistantConversation()
+      .then((data) => {
+        if (cancelled || !session || !data.turns?.length) return;
+        setTranscript(
+          data.turns.map((turn) =>
+            turn.role === 'user'
+              ? { id: nextId(), role: 'user' as const, text: turn.text }
+              : { id: nextId(), role: 'assistant' as const, answer: restoredAnswer(turn.text) },
+          ),
+        );
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) hydratedRef.current = true;
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session, storageKey]);
+
+  useEffect(() => {
+    if (!session || !hydratedRef.current) return;
+    writeDexTranscript(storageKey, transcript);
+  }, [session, storageKey, transcript]);
 
   useEffect(() => {
     const onReset = () => {
@@ -184,6 +261,16 @@ export default function AssistantPanel({ environment, onClose }: AssistantPanelP
     const allowed = visibleCards;
     const assistantContext = context;
     const previousUser = [...transcript].reverse().find((item) => item.role === 'user');
+    const history = transcript
+      .map((item) =>
+        item.role === 'user'
+          ? { role: 'user' as const, text: item.text.slice(0, 400) }
+          : {
+            role: 'assistant' as const,
+            text: `${item.answer.headline}. ${item.answer.body}`.slice(0, 400),
+          },
+      )
+      .slice(-12);
     setTranscript((current) => [...current, { id: nextId(), role: 'user', text: spoken }]);
     setView('home');
     setTopic(null);
@@ -197,6 +284,7 @@ export default function AssistantPanel({ environment, onClose }: AssistantPanelP
           pathname: location.pathname,
           search: location.search,
           previousQuestion: previousUser?.text,
+          history,
           viewport: window.matchMedia('(max-width: 767px)').matches ? 'phone' : 'desktop',
         });
       } catch {
@@ -219,6 +307,16 @@ export default function AssistantPanel({ environment, onClose }: AssistantPanelP
     }
   }
 
+  function startNewConversation() {
+    hydratedRef.current = true;
+    setTranscript([]);
+    setView('home');
+    setTopic(null);
+    setDraft('');
+    clearDexTranscript(storageKey);
+    void resetAdvisorTrackAssistantConversation().catch(() => undefined);
+  }
+
   return (
     <section
       id="assistant-panel"
@@ -233,15 +331,27 @@ export default function AssistantPanel({ environment, onClose }: AssistantPanelP
           <h2 id="assistant-panel-title">{DEX_NAME}</h2>
           <p>{DEX_TAGLINE}</p>
         </div>
-        <button
-          type="button"
-          className="assistant-icon-button"
-          aria-label={`Close ${DEX_NAME}`}
-          data-testid="assistant-close"
-          onClick={onClose}
-        >
-          <X size={18} />
-        </button>
+        <div className="assistant-panel-actions">
+          {transcript.length > 0 ? (
+            <button
+              type="button"
+              className="assistant-new-conversation"
+              data-testid="assistant-new-conversation"
+              onClick={startNewConversation}
+            >
+              New conversation
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="assistant-icon-button"
+            aria-label={`Close ${DEX_NAME}`}
+            data-testid="assistant-close"
+            onClick={onClose}
+          >
+            <X size={18} />
+          </button>
+        </div>
       </header>
 
       <div
@@ -256,7 +366,7 @@ export default function AssistantPanel({ environment, onClose }: AssistantPanelP
         {view === 'home' ? (
           <>
             {transcript.length === 0 && !asking ? (
-              <p className="assistant-intro">Ask Dex anything about using AdvisorTrack.</p>
+              <p className="assistant-intro">Ask Dex anything — your book, or just talk.</p>
             ) : (
               <div className="assistant-transcript" data-testid="assistant-transcript">
                 {transcript.map((item) =>
@@ -276,7 +386,7 @@ export default function AssistantPanel({ environment, onClose }: AssistantPanelP
                 )}
                 {asking ? (
                   <p className="assistant-muted" data-testid="assistant-asking">
-                    Looking that up…
+                    One moment…
                   </p>
                 ) : null}
                 <div ref={transcriptEndRef} data-testid="assistant-transcript-end" />

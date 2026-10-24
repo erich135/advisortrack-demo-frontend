@@ -6,7 +6,14 @@ export type AssistantAskRequest = {
   pathname?: string;
   search?: string;
   previousQuestion?: string;
+  history?: Array<{ role: 'user' | 'assistant'; text: string }>;
   viewport?: 'desktop' | 'phone' | 'unknown';
+  resetConversation?: boolean;
+};
+
+export type AssistantConversationTurn = {
+  role: 'user' | 'assistant';
+  text: string;
 };
 
 /**
@@ -22,7 +29,25 @@ export async function askAdvisorTrackAssistant(input: AssistantAskRequest): Prom
       pathname: input.pathname,
       search: input.search,
       previousQuestion: input.previousQuestion,
+      history: input.history,
       viewport: input.viewport,
+      resetConversation: input.resetConversation,
     },
+  });
+}
+
+export async function getAdvisorTrackAssistantConversation(): Promise<{
+  turns: AssistantConversationTurn[];
+}> {
+  return apiRequest('/assistant/conversation');
+}
+
+export async function resetAdvisorTrackAssistantConversation(options?: {
+  token?: string;
+}): Promise<{ cleared: boolean }> {
+  return apiRequest('/assistant/conversation/reset', {
+    method: 'POST',
+    token: options?.token,
+    skipUnauthorizedHandler: true,
   });
 }

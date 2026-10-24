@@ -38,6 +38,7 @@ const STOP = new Set([
   'for',
   'from',
   'how',
+  'hows',
   'i',
   'in',
   'is',
@@ -56,8 +57,15 @@ const STOP = new Set([
   'to',
   'we',
   'what',
+  'whats',
+  'when',
+  'whens',
   'where',
+  'wheres',
+  'who',
+  'whos',
   'why',
+  'whys',
   'with',
   'would',
   'you',
@@ -65,7 +73,7 @@ const STOP = new Set([
 ]);
 
 const MATCH_MIN = 0.55;
-const COVERAGE_MIN = 0.3;
+const COVERAGE_MIN = 0.5;
 const MATCH_LEAD = 0.12;
 const COMPOSE_MIN = 0.28;
 const COMPOSE_WINDOW = 0.28;
@@ -74,7 +82,6 @@ const DISAMBIGUATE_MIN = 0.62;
 const DISAMBIGUATE_WINDOW = 0.04;
 const DISAMBIGUATE_MAX = 3;
 const ROUTE_BONUS = 0.08;
-const DOMAIN_TOKENS = new Set(['fica', 'popia', 'pipeline', 'production', 'licence', 'license', 'quotes', 'quote']);
 
 function cardFamily(cardId: string): string {
   const dot = cardId.indexOf('.');
@@ -195,6 +202,15 @@ export function retrieveCards<T extends RetrievableCard>(
 
   if (!ranked.length) return { kind: 'unknown' };
 
+  const queryNormForStatus = normalizeQuestion(question);
+  if (/\blead\b/.test(queryNormForStatus) && /\b(client|prospect|status)\b/.test(queryNormForStatus)) {
+    const preferred = ranked.filter((hit) => /^(CONTACT\.(STATUS|CLIENT|PROSPECT))$/.test(hit.card.id));
+    if (preferred.length) {
+      const rest = ranked.filter((hit) => !preferred.some((item) => item.card.id === hit.card.id));
+      ranked.splice(0, ranked.length, ...preferred, ...rest);
+    }
+  }
+
   const top = ranked[0];
   const second = ranked[1];
   const exactUnique = top.exactForm && (!second || !second.exactForm);
@@ -208,14 +224,10 @@ export function retrieveCards<T extends RetrievableCard>(
       questionTokens([card.title, ...card.aliases, ...card.questionForms].join(' ')),
     );
     let overlap = 0;
-    let domainHit = false;
     for (const token of queryTokens) {
-      if (!fieldTokens.has(token)) continue;
-      overlap += 1;
-      if (DOMAIN_TOKENS.has(token)) domainHit = true;
+      if (fieldTokens.has(token)) overlap += 1;
     }
-    const ratio = overlap / queryTokens.length;
-    return domainHit ? Math.max(ratio, COVERAGE_MIN) : ratio;
+    return overlap / queryTokens.length;
   }
 
   if (unique && (top.exactForm || coverage(top.card) >= COVERAGE_MIN)) {
@@ -262,10 +274,11 @@ export function retrieveCards<T extends RetrievableCard>(
   if (sameFamily.length >= 2) {
     return { kind: 'compose', cards: sameFamily.slice(0, 3) };
   }
-  if (coverage(top.card) >= COVERAGE_MIN) {
-    return { kind: 'match', card: top.card, score: top.score };
-  }
-  if (sameFamily.length === 1) {
+  if (
+    sameFamily.length === 1
+    && sameFamily[0].score >= MATCH_MIN
+    && (sameFamily[0].exactForm || coverage(sameFamily[0].card) >= COVERAGE_MIN)
+  ) {
     return { kind: 'match', card: sameFamily[0].card, score: sameFamily[0].score };
   }
 
@@ -283,7 +296,9 @@ export function retrieveCards<T extends RetrievableCard>(
 
   const onRoute = ranked.filter((hit) => {
     if (!currentRouteId) return false;
-    return hit.card.routes.includes(currentRouteId) && hit.score >= 0.22 && coverage(hit.card) >= COVERAGE_MIN;
+    return hit.card.routes.includes(currentRouteId)
+      && hit.score >= MATCH_MIN
+      && (hit.exactForm || coverage(hit.card) >= COVERAGE_MIN);
   }).slice(0, COMPOSE_MAX);
   if (onRoute.length === 1) {
     return { kind: 'match', card: onRoute[0].card, score: onRoute[0].score };
